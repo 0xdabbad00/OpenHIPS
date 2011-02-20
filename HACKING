@@ -1,0 +1,50 @@
+Technical Notes about OpenHIPS
+------------------------------
+--[ Design
+Basic goal is to run inside a process we want to protect and then watch 
+for exploit attempts and block. Get inside the process via AppInit_Dll 
+to give "firststage" execution.  This then determines if we should run 
+there, and if we should then protector (ohipsp) gets loaded.
+
+Components:
+* monitor (ohipsm*.exe): Makes sure the necessary AppInit_Dll and related reg
+	values are set.
+* firststage (ohipsfs*.dll): Loaded into every process via AppInit_DLL and
+	determines if this process should be protected.
+* protector (ohipsp*.dll): Loaded by firststage into processes we want to
+	protect.
+
+--[ Debug output
+Debug releases display output that is visible in debuggers or  DbgView 
+from SysInternals.
+
+Internet Explorer and some other products will create two process (a parent 
+and child) with the child being a "sandbox" that runs at low integrity levels.
+If you attempt to see debug messages in DbgView you will need to first set
+the integrity level of dbgview with:
+icacls dbgview.exe /setintegritylevel low
+You can confirm the integrity levels by looking in Process Explorer.
+
+
+--[ Why AppInit_DLL?
+I want a DLL loaded into any instances of Internet Explorer, Adobe Acrobat, 
+FireFox, and some other processes.  The common way of doing this is to
+use the AppInit_DLL registry value.  There are concerns with this method, 
+specifically the post "AppInit_DLLs should be renamed 
+Deadlock_Or_Crash_Randomly_DLLs" at
+http://blogs.msdn.com/b/oldnewthing/archive/2007/12/13/6648400.aspx, and 
+the doc "AppInit DLLs in Windows 7 and Windows Server 2008 R2 - 4" which 
+states "Because AppInit DLLs are loaded very early during process 
+initialization, they should use only APIs that are exported from 
+kernel32.dll in their initialization routines."
+
+LoadDLLViaAppInit from Didier Stevens at 
+http://blog.didierstevens.com/2009/12/23/loaddllviaappinit/
+implements this.
+
+Also, with AppInit_Dll, you may need to set additional registry keys.  These
+are all in HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT \CurrentVersion\Windows
+- LoadAppInit_DLLs (REG_DWORD): Set to 1 to enable
+- AppInit_DLLs (REG_SZ): space or comma separated list of DLL paths with 
+	short names.
+- RequireSignedAppInit_DLLs (REG_DWORD): Set to 0 to load any DLLs
