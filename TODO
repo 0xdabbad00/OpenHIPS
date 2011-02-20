@@ -1,5 +1,2 @@
-- Figure out how to get stats on code.google.com
 - Link to project from 0xdabbad00.com for SEO
-- Create .msi installer using Wix
-	* Turn monitor into a service
-- Clean up C# project settings and code
+- Figure out why msi takes so long to load

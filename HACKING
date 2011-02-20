@@ -48,3 +48,12 @@ are all in HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT \CurrentVersion\Wind
 - AppInit_DLLs (REG_SZ): space or comma separated list of DLL paths with 
 	short names.
 - RequireSignedAppInit_DLLs (REG_DWORD): Set to 0 to load any DLLs
+
+
+--[ Why does the install take so long?
+Depending on your system, the installer is likely creating a checkpoint 
+during the time when the installer states "Gathering required information".
+To test this, run the installer with "msiexec /i openhips-setup.msi /l setup.log"
+and you'll see the step "InstallInitialize" takes a long time.  This occurs
+by default, and I don't want to mess with it, especially until I feel my 
+installer is safe.
