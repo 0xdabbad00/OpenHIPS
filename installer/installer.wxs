@@ -1,17 +1,38 @@
-<?xml version='1.0'?>
-<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
-   <Product Id='{1C86F771-1753-43FB-95A9-DF60BFF29375}' Name='OpenHIPS' Language='1033' 
-            Version='1.0.0.0' Manufacturer='0xdabbad00'>
-      <Package Description='OpenHIPS installer'
-               Comments='Installer'
-               Manufacturer='0xdabbad00' InstallerVersion='200' Compressed='yes' />
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="493EB5BB-AAE8-48B6-897D-CBA33865879C" Name="OpenHIPS"
+           Language="1033" Version="1.0.0.0" Manufacturer="0xdabbad00"
+           UpgradeCode="2012DA35-95A5-4D7C-933C-8BF7B1D1714A">
+    <Package InstallerVersion="200" Compressed="yes" />
+	<Media Id='1' Cabinet='product.cab' EmbedCab='yes' />
 
-      <Directory Id='TARGETDIR' Name='SourceDir'>
-         <Component Id='MyComponent' Guid='{062F50DF-F7B9-476C-9E9D-192C2A040CB1}' />
+    <Directory Id='TARGETDIR' Name='SourceDir'>
+      <Directory Id='ProgramFilesFolder' Name='PFiles'>
+        <Directory Id='OPENHIPSSERVICE' Name='OpenHIPS'>
+          <Component Id="InstallService" Guid='D6DDA62B-1DB8-4E38-B6F7-A7D074F2DC13'>
+            <File Id="OpenHIPS" Name="ohipssvc.exe"
+                  Source="..\bin\Release\ohipssvc.exe"/>
+            <ServiceInstall Id="OpenHIPS"
+                            Name="OpenHIPS"
+                            DisplayName="OpenHIPS"
+                            Type="ownProcess"
+                            Start="auto"
+                            ErrorControl="normal"
+                            Description="Protects against intrusions"
+                            Account="LocalSystem"
+							Interactive="no"
+							/>
+            <ServiceControl Id="StartOpenHIPS"
+                            Name="OpenHIPS" Start="install" Wait="no" />
+            <ServiceControl Id="StopOpenHIPS" Name="OpenHIPS"
+                            Stop="both" Wait="yes" Remove="uninstall" />
+          </Component>
+        </Directory>
       </Directory>
-
-      <Feature Id='MyFeature' Title='My 1st Feature' Level='1'>
-         <ComponentRef Id='MyComponent' />
-      </Feature>
-   </Product>
+    </Directory>
+    <Feature Id='TheOnlyFeature' Description='Feature contains the single component'
+             Level='1'>
+      <ComponentRef Id='InstallService'/>
+    </Feature>
+  </Product>
 </Wix>
