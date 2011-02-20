@@ -1,0 +1,17 @@
+<?xml version='1.0'?>
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
+   <Product Id='{1C86F771-1753-43FB-95A9-DF60BFF29375}' Name='OpenHIPS' Language='1033' 
+            Version='1.0.0.0' Manufacturer='0xdabbad00'>
+      <Package Description='OpenHIPS installer'
+               Comments='Installer'
+               Manufacturer='0xdabbad00' InstallerVersion='200' Compressed='yes' />
+
+      <Directory Id='TARGETDIR' Name='SourceDir'>
+         <Component Id='MyComponent' Guid='{062F50DF-F7B9-476C-9E9D-192C2A040CB1}' />
+      </Directory>
+
+      <Feature Id='MyFeature' Title='My 1st Feature' Level='1'>
+         <ComponentRef Id='MyComponent' />
+      </Feature>
+   </Product>
+</Wix>
