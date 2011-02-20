@@ -10,10 +10,7 @@ namespace ohipssvc
 {
     public class OhipsMonitor
     {
-        public OhipsMonitor()
-        {
-
-        }
+        public OhipsMonitor() { }
 
         // This method that will be called when the thread is started
         public void OhipsMonitorThread()
