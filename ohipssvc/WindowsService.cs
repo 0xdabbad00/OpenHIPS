@@ -11,6 +11,7 @@ using System.Threading;
 
 namespace ohipssvc
 {
+    [System.ComponentModel.DesignerCategory("")]
     class WindowsService : ServiceBase
     {
         public static Boolean running = true;
