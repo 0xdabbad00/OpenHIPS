@@ -73,6 +73,7 @@ namespace ohipssvc
         {
             System.Diagnostics.Debug.WriteLine("OpenHIPS Stop");
             running = false;
+            OhipsMonitor.Uninstall();
             base.OnStop();
         }
 
