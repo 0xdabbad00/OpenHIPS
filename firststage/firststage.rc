@@ -1,0 +1,35 @@
+#include <windows.h>
+
+#define VERSION_NUMBER 0,0,0,1
+#define VERSION_STRING "0.0.0.1"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION VERSION_NUMBER
+PRODUCTVERSION VERSION_NUMBER
+FILEOS VOS__WINDOWS32
+FILETYPE VFT_DLL
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "00000000"
+        BEGIN
+            VALUE "CompanyName", "0xdabbad00" "\000"
+            VALUE "FileDescription", "Determines if the process should load an additional dll" "\000"
+            VALUE "FileVersion", VERSION_STRING "\000"
+            VALUE "LegalCopyright", "GNU Public License v3" "\000"
+			#ifdef _WIN64
+            VALUE "OriginalFilename", "ohipsfs64.dll" "\000"
+			#else
+			VALUE "OriginalFilename", "ohipsfs32.dll" "\000"
+			#endif
+            VALUE "ProductName", "OpenHIPS" "\000"
+            VALUE "ProductVersion", VERSION_STRING "\000"
+            VALUE "Comments", "OpenHIPS protects against exloitation" "\000"
+        END
+    END
+
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0000 0x0000
+    END
+END
