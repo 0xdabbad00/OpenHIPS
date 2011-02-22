@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-  <Product Id="493EB5BB-AAE8-48B6-897D-CBA33865879C" Name="OpenHIPS"
+  <Product Id="*" Name="OpenHIPS"
            Language="1033" Version="1.0.0.0" Manufacturer="0xdabbad00"
            UpgradeCode="2012DA35-95A5-4D7C-933C-8BF7B1D1714A">
     <Package 
@@ -9,38 +9,49 @@
 		InstallPrivileges="elevated"
 		/>
 	<Media Id='1' Cabinet='product.cab' EmbedCab='yes' />
+	
+	<!-- Display an icon in Add/Remove Programs -->
+	<Icon Id="icon.ico" SourceFile="..\images\icon.ico"/>
+	<Property Id="ARPPRODUCTICON" Value="icon.ico" />
+	<Property Id="ALLUSERS" Value="1" />
+	
+	<Condition Message='You need to be an administrator to install this product.'>Privileged</Condition>  
 
     <Directory Id='TARGETDIR' Name='SourceDir'>
       <Directory Id='ProgramFilesFolder' Name='PFiles'>
-        <Directory Id='OPENHIPSSERVICE' Name='OpenHIPS'>
-          <Component Id="InstallService" Guid='D6DDA62B-1DB8-4E38-B6F7-A7D074F2DC13'>
-            <File Id="ohipssvc" Name="ohipssvc.exe" Source="..\bin\Release\ohipssvc.exe" KeyPath="yes" />
+        <Directory Id='OPENHIPSSERVICE' Name='OpenHIPS' />
+      </Directory>
+    </Directory>
+	
+	<DirectoryRef Id="OPENHIPSSERVICE">
+		<Component Id="InstallService" Guid='D6DDA62B-1DB8-4E38-B6F7-A7D074F2DC13'>
+			<File Id="ohipssvc" Name="ohipssvc.exe" Source="..\bin\Release\ohipssvc.exe" KeyPath="yes" />
 			<File Id="ohipsfs32" Name="ohipsfs32.dll" Source="..\bin\Release\ohipsfs32.dll"/>
 			<File Id="ohipsfs64" Name="ohipsfs64.dll" Source="..\bin\Release\ohipsfs64.dll"/>
 			<File Id="ohipsp32" Name="ohipsp32.dll" Source="..\bin\Release\ohipsp32.dll"/>
 			<File Id="ohipsp64" Name="ohipsp64.dll" Source="..\bin\Release\ohipsp64.dll"/>
-		
-            <ServiceInstall Id="OpenHIPS"
-                            Name="OpenHIPS"
-                            DisplayName="OpenHIPS"
-                            Type="ownProcess"
-                            Start="auto"
-                            ErrorControl="normal"
-                            Description="Protects against intrusions"
-                            Account="LocalSystem"
+
+			<ServiceInstall Id="OpenHIPS"
+							Name="OpenHIPS"
+							DisplayName="OpenHIPS"
+							Type="ownProcess"
+							Start="auto"
+							ErrorControl="normal"
+							Description="Protects against intrusions"
+							Account="LocalSystem"
 							Interactive="no"
 							/>
-            <ServiceControl Id="StartOpenHIPS"
-                            Name="OpenHIPS" Start="install" Wait="no" />
-            <ServiceControl Id="StopOpenHIPS" Name="OpenHIPS"
-                            Stop="both" Wait="yes" Remove="uninstall" />
-          </Component>
-        </Directory>
-      </Directory>
-    </Directory>
-    <Feature Id='TheOnlyFeature' Description='Feature contains the single component'
-             Level='1'>
-      <ComponentRef Id='InstallService'/>
+			<ServiceControl Id="StartOpenHIPS"
+							Name="OpenHIPS" Start="install" Wait="no" />
+			<ServiceControl Id="StopOpenHIPS" Name="OpenHIPS"
+							Stop="both" Wait="yes" Remove="uninstall" />
+		</Component>
+	</DirectoryRef>
+	
+    <Feature	Id="MainApplication"
+				Title="MainApplication"
+				Level='1'>
+		<ComponentRef Id='InstallService'/>
     </Feature>
   </Product>
 </Wix>
