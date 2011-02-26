@@ -19,6 +19,7 @@
  * @file		protector\dllmain.cpp
  * @summary		Based heavily on Didier Steven's HeapLocker project
  *		(http://blog.didierstevens.com/programs/heaplocker/)
+ *		Based on HeapLocker 0.0.0.3 from 2010/12/15
  */
 
 #include "common.h"
@@ -42,43 +43,14 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 }
 */
 
-/*
-	HeapLocker
-	Source code put in public domain by Didier Stevens, no Copyright
-	https://DidierStevens.com
-	Use at your own risk
-
-	Editor tab stop value = 2
-
-	Shortcomings, or todo's ;-)
-
-	History:
-		2010/09/27 0.0.0.1 Start development
-		2010/09/28 Switched to shellcode that calls EntryPoint
-		2010/09/29 Applications specific registry settings
-		2010/09/30 Added NOP-sled detector
-		2010/10/01 Added HEAPLOCKER_SETTINGS + related functions
-		2010/10/04 0.0.0.2 Exclude byte 0x33 from NOP sled detection
-		2010/10/05 Added NOP-sled start address; added MonitorNewPagesToSearchThem
-		2010/10/07 Generalized SearchFunctionKMP
-		2010/10/08 Added Verbose and Search option
-		2010/10/09 Added ThreadedMessageBox
-		2010/10/15 Added PreallocatePage0
-		2010/12/02 Added ForceTermination
-		2010/12/03 Changed MessageBox icon in case of termintation
-		2010/12/14 0.0.0.3 code review
-		2010/12/15 Merge random shellcode trap; added ResumeMonitoring
-*/
-
 #include <windows.h>
 #include <stdio.h>
 #include <tlhelp32.h>
 #include <tchar.h>
 #include <psapi.h>
-
-#ifdef INCLUDE_RESOURCE
-#pragma resource "heaplocker.res"
-#endif
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
 #pragma comment(lib, "psapi.lib")
 
@@ -89,9 +61,9 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 #define MAX_REGISTRY_KEY_NAME		255
 #define MAX_REGISTRY_VALUE_NAME	16383
 
-#define REGISTRY_PATH											_TEXT("Software\\DidierStevens\\HeapLocker")
+#define REGISTRY_PATH											_TEXT("Software\\OpenHIPS\\HeapLocker")
 #define REGISTRY_ADDRESSES								_TEXT("Addresses")
-#define REGISTRY_PATH_APPLICATIONS				_TEXT("Software\\DidierStevens\\HeapLocker\\Applications")
+#define REGISTRY_PATH_APPLICATIONS				_TEXT("Software\\OpenHIPS\\HeapLocker\\Applications")
 #define REGISTRY_PRIVATE_USAGE_MAX				_TEXT("PrivateUsageMax")
 #define REGISTRY_NOP_SLED_LENGTH_MAX			_TEXT("NOPSledLengthMin")
 #define REGISTRY_GENERIC_PRE_ALLOCATE			_TEXT("GenericPreAllocate")
@@ -147,7 +119,7 @@ void CondOutputDebugString(LPTSTR pszMessage)
 #ifdef OUTPUTDEBUGSTRING
 	TCHAR szOutput[256];
 
-	_sntprintf(szOutput, countof(szOutput), _TEXT("[HLK] %s"), pszMessage);
+	_sntprintf_s(szOutput, countof(szOutput), _TRUNCATE, _TEXT("[HLK] %s"), pszMessage);
 	OutputDebugString(szOutput);
 #endif
 }
@@ -159,7 +131,7 @@ void CondOutputDebugStringF(LPTSTR pszFormat, ...)
 	va_list vaArgs;
 
 	va_start(vaArgs, pszFormat);
-	_vsntprintf(szOutput, countof(szOutput), pszFormat, vaArgs);
+	_vsntprintf_s(szOutput, countof(szOutput), _TRUNCATE, pszFormat, vaArgs);
 	CondOutputDebugString(szOutput);
 	va_end(vaArgs);
 #endif
@@ -272,10 +244,10 @@ DWORD WINAPI DisplayMessageBox(LPVOID lpvArgument)
 {
 	if (sHeapLockerSettings.dwForceTermination)
 	{
-		MessageBox(NULL, lpvArgument, MESSAGEBOX_TITLE, MB_OK | MB_ICONSTOP);
+		MessageBox(NULL, (LPCSTR)lpvArgument, MESSAGEBOX_TITLE, MB_OK | MB_ICONSTOP);
 		TerminateProcess(GetCurrentProcess(), 0);
 	}
-	else if (IDYES == MessageBox(NULL, lpvArgument, MESSAGEBOX_TITLE, MB_YESNO | MB_ICONEXCLAMATION))
+	else if (IDYES == MessageBox(NULL, (LPCSTR)lpvArgument, MESSAGEBOX_TITLE, MB_YESNO | MB_ICONEXCLAMATION))
 		TerminateProcess(GetCurrentProcess(), 0);
 	else
 		return FALSE;
@@ -368,7 +340,7 @@ DWORD WINAPI EntryPoint(LPVOID lpvArgument)
 	TCHAR szOutput[256];
 
 	SuspendThreadsOfCurrentProcessExceptCurrentThread(TRUE);
-	_sntprintf(szOutput, countof(szOutput), _TEXT("This document is malicious!\nClick OK to terminate this program (%s).\n\nTechnical details: shellcode trap\nReturn address: %08x"), NULL2EmptyString(GetExecutableName()), lpvArgument);
+	_sntprintf_s(szOutput, countof(szOutput), _TRUNCATE, _TEXT("This document is malicious!\nClick OK to terminate this program (%s).\n\nTechnical details: shellcode trap\nReturn address: %08x"), NULL2EmptyString(GetExecutableName()), lpvArgument);
 	MessageBox(NULL, szOutput, MESSAGEBOX_TITLE, MB_ICONSTOP);
 	TerminateProcess(GetCurrentProcess(), 0);
 	return 0;
@@ -385,7 +357,7 @@ PBYTE ShellCodeToEntryPoint(void)
 	if (NULL != pbAddress)
 		return pbAddress;
 	
-	srand(time(0));
+	srand((unsigned int)time(0));
 	for (lpvPage = NULL; NULL == lpvPage;)
 	{
 		pbAddress = (PBYTE)((rand() % 0x7E + 1) * 0x1000000 + rand() % 0x7F * 0x10000 + rand() % 0x7F * 0x100 + (rand() % 0x7F & 0xFC));
@@ -442,7 +414,7 @@ SIZE_T PreallocateAddress(DWORD dwAddress, int iMode)
 		stReturn = sMBI.RegionSize;
 		if (ADDRESS_MODE_NOACCESS != iMode)
 		{
-			srand(time(0));
+			srand((unsigned int)time(0));
 			for (uiIter = 0; uiIter < sMBI.RegionSize; uiIter++)
 				*((PBYTE)lpvPage + uiIter) = abNOPs[rand() % countof(abNOPs)];
 			pbAddress = (PBYTE)lpvPage + sMBI.RegionSize - 7 - rand() % 0x10;
@@ -474,7 +446,6 @@ void ProtectAddresses(HKEY hKeyApplication)
 	DWORD dwIndex;
 	TCHAR szValueName[MAX_REGISTRY_VALUE_NAME];
 	DWORD dwValueNameSize;
-	DWORD dwResult;
 	SIZE_T stMemory;
 	int iIter;
 
@@ -748,9 +719,9 @@ BOOL CheckPrivateUsage(void)
 	if (sPMCE.PrivateUsage / 1024 / 1024 >= sHeapLockerSettings.dwPrivateUsageMax)
 	{
 		if (sHeapLockerSettings.dwForceTermination)
-			_sntprintf(szOutput, countof(szOutput), _TEXT("This document is probably malicious!\nClick OK to terminate this program (%s).\n\nTechnical details: heap-spray detected\nPrivateUsage %ld MB"), NULL2EmptyString(GetExecutableName()), sPMCE.PrivateUsage / 1024 / 1024);
+			_sntprintf_s(szOutput, countof(szOutput), _TRUNCATE, _TEXT("This document is probably malicious!\nClick OK to terminate this program (%s).\n\nTechnical details: heap-spray detected\nPrivateUsage %ld MB"), NULL2EmptyString(GetExecutableName()), sPMCE.PrivateUsage / 1024 / 1024);
 		else
-			_sntprintf(szOutput, countof(szOutput), _TEXT("This document is probably malicious!\nDo you want to terminate this program (%s)?\n\nTechnical details: heap-spray detected\nPrivateUsage %ld MB"), NULL2EmptyString(GetExecutableName()), sPMCE.PrivateUsage / 1024 / 1024);
+			_sntprintf_s(szOutput, countof(szOutput), _TRUNCATE, _TEXT("This document is probably malicious!\nDo you want to terminate this program (%s)?\n\nTechnical details: heap-spray detected\nPrivateUsage %ld MB"), NULL2EmptyString(GetExecutableName()), sPMCE.PrivateUsage / 1024 / 1024);
 		if (FALSE == ThreadedMessageBox(szOutput))
 			return FALSE;
 	}
@@ -1154,9 +1125,9 @@ BOOL AnalyzeNewPagesForNOPSleds(void)
 								{
 									CondOutputDebugStringF(_TEXT(" Size of largest NOP-sled = %ld operation = 0x%02X start = 0x%08X"), stCountNOPMax, bOperationLargestSled, pbStartNOPSledMax);
 									if (sHeapLockerSettings.dwForceTermination)
-										_sntprintf(szOutput, countof(szOutput), _TEXT("This document is probably malicious!\nClick OK to terminate this program (%s).\n\nTechnical details: NOP-sled detected\nlength = %ld\noperation = 0x%02X\nstart = 0x%08X"), NULL2EmptyString(GetExecutableName()), stCountNOPMax, bOperationLargestSled, pbStartNOPSledMax);
+										_sntprintf_s(szOutput, countof(szOutput), _TRUNCATE, _TEXT("This document is probably malicious!\nClick OK to terminate this program (%s).\n\nTechnical details: NOP-sled detected\nlength = %ld\noperation = 0x%02X\nstart = 0x%08X"), NULL2EmptyString(GetExecutableName()), stCountNOPMax, bOperationLargestSled, pbStartNOPSledMax);
 									else
-										_sntprintf(szOutput, countof(szOutput), _TEXT("This document is probably malicious!\nDo you want to terminate this program (%s)?\n\nTechnical details: NOP-sled detected\nlength = %ld\noperation = 0x%02X\nstart = 0x%08X"), NULL2EmptyString(GetExecutableName()), stCountNOPMax, bOperationLargestSled, pbStartNOPSledMax);
+										_sntprintf_s(szOutput, countof(szOutput), _TRUNCATE, _TEXT("This document is probably malicious!\nDo you want to terminate this program (%s)?\n\nTechnical details: NOP-sled detected\nlength = %ld\noperation = 0x%02X\nstart = 0x%08X"), NULL2EmptyString(GetExecutableName()), stCountNOPMax, bOperationLargestSled, pbStartNOPSledMax);
 									if (FALSE == ThreadedMessageBox(szOutput))
 										if (!sHeapLockerSettings.dwResumeMonitoring)
 											return FALSE;
@@ -1360,14 +1331,14 @@ BOOL AnalyzeNewPagesToSearchThem(void)
 								CondOutputDebugStringF(_TEXT("Keyword analysis page 0x%08x protection = 0x%04x size = 0x%04x"), sMBI.BaseAddress, sMBI.Protect, sMBI.RegionSize);
 							if (!bFirstRun)
 							{
-								pbFound = SearchFunctionKMP(sHeapLockerSettings.abSearch, sHeapLockerSettings.iSearchLen, sMBI.BaseAddress, sMBI.RegionSize, sHeapLockerSettings.iSearchMode);
+								pbFound = SearchFunctionKMP(sHeapLockerSettings.abSearch, sHeapLockerSettings.iSearchLen, (PBYTE)sMBI.BaseAddress, sMBI.RegionSize, sHeapLockerSettings.iSearchMode);
 								if (NULL != pbFound)
 								{
 									CondOutputDebugStringF(_TEXT(" Found string at 0x%08X"), pbFound);
 									if (sHeapLockerSettings.dwForceTermination)
-										_sntprintf(szOutput, countof(szOutput), _TEXT("This document is probably malicious!\nClick OK to terminate this program (%s).\n\nTechnical details: string detected\nstart = 0x%08X\nstring = %s"), NULL2EmptyString(GetExecutableName()), pbFound, NULL2EmptyString(HexDump(pbFound, 50)));
+										_sntprintf_s(szOutput, countof(szOutput), _TRUNCATE, _TEXT("This document is probably malicious!\nClick OK to terminate this program (%s).\n\nTechnical details: string detected\nstart = 0x%08X\nstring = %s"), NULL2EmptyString(GetExecutableName()), pbFound, NULL2EmptyString(HexDump(pbFound, 50)));
 									else
-										_sntprintf(szOutput, countof(szOutput), _TEXT("This document is probably malicious!\nDo you want to terminate this program (%s)?\n\nTechnical details: string detected\nstart = 0x%08X\nstring = %s"), NULL2EmptyString(GetExecutableName()), pbFound, NULL2EmptyString(HexDump(pbFound, 50)));
+										_sntprintf_s(szOutput, countof(szOutput), _TRUNCATE, _TEXT("This document is probably malicious!\nDo you want to terminate this program (%s)?\n\nTechnical details: string detected\nstart = 0x%08X\nstring = %s"), NULL2EmptyString(GetExecutableName()), pbFound, NULL2EmptyString(HexDump(pbFound, 50)));
 									if (FALSE == ThreadedMessageBox(szOutput))
 										if (!sHeapLockerSettings.dwResumeMonitoring)
 											return FALSE;
@@ -1405,7 +1376,7 @@ DWORD WINAPI MonitorNewPagesToSearchThem(LPVOID lpvArgument)
 #pragma warn +8057
 #endif
 
-typedef DWORD WINAPI (*NTALLOCATEVIRTUALMEMORY)(HANDLE, PVOID *, ULONG_PTR, PSIZE_T, ULONG, ULONG);
+typedef DWORD (WINAPI *NTALLOCATEVIRTUALMEMORY)(HANDLE, PVOID *, ULONG_PTR, PSIZE_T, ULONG, ULONG);
 
 // http://www.ivanlef0u.tuxfamily.org/?p=355
 void PreallocatePage0(void)

@@ -47,6 +47,11 @@
 							Name="OpenHIPS" Start="install" Wait="no" />
 			<ServiceControl Id="StopOpenHIPS" Name="OpenHIPS"
 							Stop="both" Wait="yes" Remove="uninstall" />
+							
+			<RegistryKey Root="HKLM" Key="Software\OpenHIPS\HeapLocker" Action="createAndRemoveOnUninstall">
+				<RegistryValue Type="integer" Name="PrivateUsageMax" Value="1000" />
+			</RegistryKey>
+
 		</Component>
 	</DirectoryRef>
 	
