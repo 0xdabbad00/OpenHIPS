@@ -33,7 +33,7 @@ void PrintMessage(char *file, int lineno, int errorLvl, char *fmt, ...)
 	vsprintf_s(str, sizeof(str), fmt, args);
 	va_end(args);
 	// TODO MUST, On error, need to call GetLastError and print error message
-	sprintf_s(output, sizeof(output), "%s[%s:%d] %s", 
+	_snprintf_s(output, sizeof(output), _TRUNCATE, "%s[%s:%d] %s", 
 		(errorLvl == ERROR_LEVEL) ? "ERROR " : "", 
 		file, lineno, str);
 
@@ -44,7 +44,7 @@ void PrintMessage(char *file, int lineno, int errorLvl, char *fmt, ...)
 	if (errorLvl == ERROR_LEVEL)
 	{
 		// TODO MUST print the error to a log file
-		printf("%s\n", output);
+		//printf("%s\n", output);
 
 		// Decode error code
 		FormatMessage(
@@ -57,12 +57,12 @@ void PrintMessage(char *file, int lineno, int errorLvl, char *fmt, ...)
         (LPTSTR) &lpMsgBuf,
         0, NULL );
 
-		sprintf_s(output, sizeof(output), "Last Error (%d): %s", dwError, lpMsgBuf);
+		_snprintf_s(output, sizeof(output), _TRUNCATE, "Last Error (%d): %s", dwError, lpMsgBuf);
 #ifdef _DEBUG
 		OutputDebugString(output);
 #endif
 		// TODO MUST print the error to a log file
-		printf("%s\n", output);
+		// printf("%s\n", output);
 	}
 
 	// Clean-up
