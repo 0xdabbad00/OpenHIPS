@@ -30,6 +30,8 @@
 			<File Id="ohipsfs64" Name="ohipsfs64.dll" Source="..\bin\Release\ohipsfs64.dll"/>
 			<File Id="ohipsp32" Name="ohipsp32.dll" Source="..\bin\Release\ohipsp32.dll"/>
 			<File Id="ohipsp64" Name="ohipsp64.dll" Source="..\bin\Release\ohipsp64.dll"/>
+			
+			<File Id="dllLoad32" Name="dllLoad32.cfg" Source="dllLoad32.cfg"/>
 
 			<ServiceInstall Id="OpenHIPS"
 							Name="OpenHIPS"
