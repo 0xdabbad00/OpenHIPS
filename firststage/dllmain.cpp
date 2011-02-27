@@ -229,15 +229,15 @@ BOOL LoadDllsSpecifiedInConfig(PCHAR szConfigPath, PCHAR szProcessName, PCHAR sz
 				if (szLine == NULL || strlen(szLine) == 0 || szLine[0] == '#')
 				{
 					// Ignore comment lines
-					break;
+					continue;
 				}
 
 				PCHAR szProcessNameToCheckFor = strtok_s(szLine, "\t", &nextToken);
-				PCHAR szDllToLoadName = strtok_s(NULL, "\t", &nextToken);
+				PCHAR szDllToLoadName = strtok_s(NULL, "\t\r\n", &nextToken);
 				if (szProcessNameToCheckFor == NULL || szDllToLoadName == NULL)
 				{
 					PrintInfo("Line parsed to null values: %s", szLine);
-					break;
+					continue;
 				}
 
 				// Check if this line from the config file is describing this process
