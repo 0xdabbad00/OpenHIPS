@@ -23,25 +23,6 @@
  */
 
 #include "common.h"
-/*
-BOOL APIENTRY DllMain( HMODULE hModule,
-                       DWORD  dwReason,
-                       LPVOID lpReserved
-					 )
-{
-	if (dwReason == DLL_PROCESS_ATTACH)
-	{
-		PrintInfo("Running OpenHips Protector (ohipsp), compiled on: %s", __TIMESTAMP__);
-		PrintInfo("Loaded into a process %d", GetCurrentProcessId());
-	}
-	else if (dwReason == DLL_PROCESS_DETACH)
-	{
-		PrintInfo("Unloading ohipsp from process %d", GetCurrentProcessId());
-	}
-
-	return TRUE;
-}
-*/
 
 #include <windows.h>
 #include <stdio.h>
@@ -52,6 +33,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 #include <stdlib.h>
 #include <time.h>
 
+
 #pragma comment(lib, "psapi.lib")
 
 #define countof(array) (sizeof(array)/sizeof(array[0]))
@@ -61,16 +43,16 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 #define MAX_REGISTRY_KEY_NAME		255
 #define MAX_REGISTRY_VALUE_NAME	16383
 
-#define REGISTRY_PATH											_TEXT("Software\\OpenHIPS\\HeapLocker")
-#define REGISTRY_ADDRESSES								_TEXT("Addresses")
+#define REGISTRY_PATH							_TEXT("Software\\OpenHIPS\\HeapLocker")
+#define REGISTRY_ADDRESSES						_TEXT("Addresses")
 #define REGISTRY_PATH_APPLICATIONS				_TEXT("Software\\OpenHIPS\\HeapLocker\\Applications")
 #define REGISTRY_PRIVATE_USAGE_MAX				_TEXT("PrivateUsageMax")
 #define REGISTRY_NOP_SLED_LENGTH_MAX			_TEXT("NOPSledLengthMin")
 #define REGISTRY_GENERIC_PRE_ALLOCATE			_TEXT("GenericPreAllocate")
-#define REGISTRY_VERBOSE									_TEXT("Verbose")
-#define REGISTRY_SEARCH_STRING						_TEXT("SearchString")
-#define REGISTRY_SEARCH_MODE							_TEXT("SearchMode")
-#define REGISTRY_NULL_PAGE_PRE_ALLOCATE		_TEXT("NullPagePreallocate")
+#define REGISTRY_VERBOSE						_TEXT("Verbose")
+#define REGISTRY_SEARCH_STRING					_TEXT("SearchString")
+#define REGISTRY_SEARCH_MODE					_TEXT("SearchMode")
+#define REGISTRY_NULL_PAGE_PRE_ALLOCATE			_TEXT("NullPagePreallocate")
 #define REGISTRY_FORCE_TERMINATION				_TEXT("ForceTermination")
 #define REGISTRY_RESUME_MONITORING				_TEXT("ResumeMonitoring")
 
@@ -80,14 +62,14 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 
 #define NOP 0x90
 
-#define ADDRESS_MODE_NOACCESS		0
+#define ADDRESS_MODE_NOACCESS	0
 #define ADDRESS_MODE_SHELLCODE	1
 
 #define OUTPUTDEBUGSTRING
 
-#define ORIGIN_NONE										0
-#define ORIGIN_DEFAULT								1
-#define ORIGIN_REGISTRY_GENERIC				2
+#define ORIGIN_NONE						0
+#define ORIGIN_DEFAULT					1
+#define ORIGIN_REGISTRY_GENERIC			2
 #define ORIGIN_REGISTRY_APPLICATION		3
 
 typedef struct {
@@ -114,40 +96,6 @@ typedef struct {
 
 HEAPLOCKER_SETTINGS sHeapLockerSettings;
 
-void CondOutputDebugString(LPTSTR pszMessage)
-{
-#ifdef OUTPUTDEBUGSTRING
-	TCHAR szOutput[256];
-
-	_sntprintf_s(szOutput, countof(szOutput), _TRUNCATE, _TEXT("[HLK] %s"), pszMessage);
-	OutputDebugString(szOutput);
-#endif
-}
-
-void CondOutputDebugStringF(LPTSTR pszFormat, ...)
-{
-#ifdef OUTPUTDEBUGSTRING
-	TCHAR szOutput[256];
-	va_list vaArgs;
-
-	va_start(vaArgs, pszFormat);
-	_vsntprintf_s(szOutput, countof(szOutput), _TRUNCATE, pszFormat, vaArgs);
-	CondOutputDebugString(szOutput);
-	va_end(vaArgs);
-#endif
-}
-
-void CondOutputDebugStringLastError(TCHAR *szMessage, DWORD dwLastError)
-{
-#ifdef OUTPUTDEBUGSTRING
-	HLOCAL hlErrorMessage = NULL;
-
-	FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_ALLOCATE_BUFFER, NULL, dwLastError, MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), (PTSTR) &hlErrorMessage, 0, NULL);
-	CondOutputDebugStringF(TEXT("%s failed: (%ld) %s"), szMessage, dwLastError, LocalLock(hlErrorMessage));
-	LocalFree(hlErrorMessage);
-#endif
-}
-
 LPTSTR NULL2EmptyString(LPTSTR pszString)
 {
 	return pszString == NULL ? "" : pszString;
@@ -162,7 +110,7 @@ LPTSTR GetExecutableName(void)
 	{
 		if (!GetModuleFileName(NULL, szModuleName, MAX_PATH))
 		{
-			CondOutputDebugStringLastError(_TEXT("GetModuleFileName"), GetLastError());
+			PrintError(_TEXT("GetModuleFileName"));
 			return NULL;
 		}
 		pszEXE = _tcsrchr(szModuleName, '\\');
@@ -172,6 +120,7 @@ LPTSTR GetExecutableName(void)
 	}
 	__except(1)
 	{
+		PrintError("Exception");
 		return NULL;
 	}
 }
@@ -186,12 +135,12 @@ LPTSTR HexDump(PBYTE pbFound, int iSize)
 		szDump[iSize] = '\0';
 		for (iIter = 0; iIter < iSize && iIter < countof(szDump); iIter++)
 			szDump[iIter] = isprint(*(pbFound + iIter*2)) ? *(pbFound + iIter*2) : '.';
-		CondOutputDebugStringF(_TEXT(" %08X: %s"), pbFound, szDump);
+		PrintInfo(_TEXT(" %08X: %s"), pbFound, szDump);
 		return szDump;
 	}
 	__except(1)
 	{
-		;
+		PrintError("Exception");
 	}
 
 	return NULL;
@@ -208,7 +157,7 @@ void SuspendThreadsOfCurrentProcessExceptCurrentThread(BOOL bSuspend)
 		hThreadSnap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
 		if (INVALID_HANDLE_VALUE == hThreadSnap)
 		{
-			CondOutputDebugStringLastError(_TEXT("CreateToolhelp32Snapshot"), GetLastError());
+			PrintError(_TEXT("CreateToolhelp32Snapshot"));
 			return;
 		}
 
@@ -221,19 +170,20 @@ void SuspendThreadsOfCurrentProcessExceptCurrentThread(BOOL bSuspend)
 				if (hThread != NULL)
 				{
 					if (bSuspend)
-						CondOutputDebugStringF(_TEXT("Suspending thread %08X: %u"), sTE32.th32ThreadID, SuspendThread(hThread));
+						PrintInfo(_TEXT("Suspending thread %08X: %u"), sTE32.th32ThreadID, SuspendThread(hThread));
 					else
-						CondOutputDebugStringF(_TEXT("Resuming thread %08X: %u"), sTE32.th32ThreadID, ResumeThread(hThread));
+						PrintInfo(_TEXT("Resuming thread %08X: %u"), sTE32.th32ThreadID, ResumeThread(hThread));
 					CloseHandle(hThread);
 				}
 				else
-					CondOutputDebugStringLastError(_TEXT("OpenThread"), GetLastError());
+					PrintError(_TEXT("OpenThread"));
 			}
 
 		CloseHandle(hThreadSnap);
 	}
 	__except(1)
 	{
+		PrintError("Exception");
 		return;
 	}
 
@@ -365,7 +315,7 @@ PBYTE ShellCodeToEntryPoint(void)
 	}
 	if (FUNCTION_FAILED(VirtualQuery(lpvPage, &sMBI, sizeof(sMBI))))
 	{
-		CondOutputDebugStringLastError(_TEXT("VirtualQuery"), GetLastError());
+		PrintError(_TEXT("VirtualQuery"));
 		return NULL;
 	}
 	for (uiIter = 0; uiIter < sizeof(abHeapLockerShellcode); uiIter++)
@@ -376,11 +326,11 @@ PBYTE ShellCodeToEntryPoint(void)
 	*(unsigned int *)(pbAddress + INDEX_SUSPENDTHREAD) = (unsigned int)SuspendThread;
 	if (FUNCTION_FAILED(VirtualProtect(lpvPage, sMBI.RegionSize, PAGE_EXECUTE, &dwOldProtect)))
 	{
-		CondOutputDebugStringLastError(_TEXT("VirtualProtect"), GetLastError());
+		PrintError(_TEXT("VirtualProtect"));
 		return NULL;
 	}
 	if (sHeapLockerSettings.dwVerbose > 0)
-		CondOutputDebugStringF(_TEXT("Shellcode address = %08x"), pbAddress);
+		PrintInfo(_TEXT("Shellcode address = %08x"), pbAddress);
 	return pbAddress;
 }
 
@@ -401,16 +351,16 @@ SIZE_T PreallocateAddress(DWORD dwAddress, int iMode)
 		if (NULL == lpvPage)
 		{
 			if (sHeapLockerSettings.dwVerbose > 0)
-				CondOutputDebugStringLastError(_TEXT("VirtualAlloc"), GetLastError());
+				PrintError(_TEXT("VirtualAlloc"));
 			return stReturn;
 		}
 		if (FUNCTION_FAILED(VirtualQuery(lpvPage, &sMBI, sizeof(sMBI))))
 		{
-			CondOutputDebugStringLastError(_TEXT("VirtualQuery"), GetLastError());
+			PrintError(_TEXT("VirtualQuery"));
 			return stReturn;
 		}
 		if (sHeapLockerSettings.dwVerbose > 0)
-			CondOutputDebugStringF(_TEXT("Exploit address = %08x mode = %d page address = %08x memory size = %ld"), pbAddress, iMode, lpvPage, sMBI.RegionSize);
+			PrintInfo(_TEXT("Exploit address = %08x mode = %d page address = %08x memory size = %ld"), pbAddress, iMode, lpvPage, sMBI.RegionSize);
 		stReturn = sMBI.RegionSize;
 		if (ADDRESS_MODE_NOACCESS != iMode)
 		{
@@ -424,13 +374,14 @@ SIZE_T PreallocateAddress(DWORD dwAddress, int iMode)
 			*(pbAddress + 6) = 0xD0; // eax
 			if (FUNCTION_FAILED(VirtualProtect(lpvPage, sMBI.RegionSize, PAGE_EXECUTE, &dwOldProtect)))
 			{
-				CondOutputDebugStringLastError(_TEXT("VirtualProtect"), GetLastError());
+				PrintError(_TEXT("VirtualProtect"));
 				return stReturn;
 			}
 		}
 	}
 	__except(1)
 	{
+		PrintError("Exception");
 		return stReturn;
 	}
 
@@ -460,7 +411,7 @@ void ProtectAddresses(HKEY hKeyApplication)
 			if (REG_DWORD == dwType)
 			{
 				if (sHeapLockerSettings.dwVerbose > 0)
-					CondOutputDebugStringF(_TEXT("Pre-allocating page for address 0x%08x (%s)"), dwValue, szValueName);
+					PrintInfo(_TEXT("Pre-allocating page for address 0x%08x (%s)"), dwValue, szValueName);
 				if (isdigit(szValueName[0]))
 					stMemory += PreallocateAddress(dwValue, szValueName[0] - '0');
 				else
@@ -475,7 +426,7 @@ void ProtectAddresses(HKEY hKeyApplication)
 		for (iIter = 1; iIter < 128; iIter++)
 			stMemory += PreallocateAddress(iIter * 0x1000000 + iIter * 0x10000 + iIter * 0x100 + iIter, sHeapLockerSettings.dwGenericPreAllocate);
 	if (sHeapLockerSettings.dwVerbose > 0)
-		CondOutputDebugStringF(_TEXT("Memory used for pre-allocated pages = %ld KB"), stMemory / 1024);
+		PrintInfo(_TEXT("Memory used for pre-allocated pages = %ld KB"), stMemory / 1024);
 }
 
 void ReadHeapLockerSettingsFromRegistryApplication(HKEY hKeyApplication)
@@ -714,8 +665,8 @@ BOOL CheckPrivateUsage(void)
 
 	GetProcessMemoryInfo(GetCurrentProcess(), (PPROCESS_MEMORY_COUNTERS)&sPMCE, sizeof(sPMCE));
 	if (sHeapLockerSettings.dwVerbose > 0)
-		CondOutputDebugStringF(_TEXT("PrivateUsage %ld MB"), sPMCE.PrivateUsage / 1024 / 1024);
-//	CondOutputDebugStringF(_TEXT("Sum %ld MB"), (sPMCE.PrivateUsage + sPMCE.WorkingSetSize + sPMCE.QuotaPagedPoolUsage + sPMCE.QuotaNonPagedPoolUsage + sPMCE.PagefileUsage) / 1024 / 1024);
+		PrintInfo(_TEXT("PrivateUsage %ld MB"), sPMCE.PrivateUsage / 1024 / 1024);
+//	PrintInfo(_TEXT("Sum %ld MB"), (sPMCE.PrivateUsage + sPMCE.WorkingSetSize + sPMCE.QuotaPagedPoolUsage + sPMCE.QuotaNonPagedPoolUsage + sPMCE.PagefileUsage) / 1024 / 1024);
 	if (sPMCE.PrivateUsage / 1024 / 1024 >= sHeapLockerSettings.dwPrivateUsageMax)
 	{
 		if (sHeapLockerSettings.dwForceTermination)
@@ -728,10 +679,6 @@ BOOL CheckPrivateUsage(void)
 	return TRUE;
 }
 
-#ifdef __BORLANDC__
-#pragma warn -8057
-#endif
-
 DWORD WINAPI MonitorPrivateUsage(LPVOID lpvArgument)
 {
 	while(CheckPrivateUsage())
@@ -739,10 +686,6 @@ DWORD WINAPI MonitorPrivateUsage(LPVOID lpvArgument)
 
 	return 0;
 }
-
-#ifdef __BORLANDC__
-#pragma warn +8057
-#endif
 
 HKEY GetApplicationRegKey(void)
 {
@@ -758,7 +701,7 @@ HKEY GetApplicationRegKey(void)
 		pszEXE = GetExecutableName();
 		if (NULL == pszEXE)
 			return NULL;
-		CondOutputDebugStringF(_TEXT("Application name: %s"), pszEXE);
+		PrintInfo(_TEXT("Application name: %s"), pszEXE);
 		if (IS_SUCCESS(RegOpenKeyEx(HKEY_LOCAL_MACHINE, REGISTRY_PATH_APPLICATIONS, 0L, KEY_READ, &hKey)))
 		{
 			dwIndex = 0;
@@ -769,7 +712,7 @@ HKEY GetApplicationRegKey(void)
 				{
 					if (IS_SUCCESS(RegOpenKeyEx(hKey, szKeyName, 0L, KEY_READ, &hKeyApplication)))
 					{
-						CondOutputDebugStringF(_TEXT("Found registry settings for application %s"), szKeyName);
+						PrintInfo(_TEXT("Found registry settings for application %s"), szKeyName);
 						RegCloseKey(hKey);
 						return hKeyApplication;
 					}
@@ -781,6 +724,7 @@ HKEY GetApplicationRegKey(void)
 	}
 	__except(1)
 	{
+		PrintError("Exception");
 		return NULL;
 	}
 
@@ -1071,7 +1015,7 @@ BOOL AnalyzeNewPagesForNOPSleds(void)
 	hProcess = OpenProcess(PROCESS_QUERY_INFORMATION|PROCESS_VM_READ, FALSE, GetCurrentProcessId());
 	if (NULL == hProcess)
 	{
-		CondOutputDebugString(_TEXT("OpenProcess failed"));
+		PrintInfo(_TEXT("OpenProcess failed"));
 		return TRUE;
 	}
 
@@ -1083,7 +1027,7 @@ BOOL AnalyzeNewPagesForNOPSleds(void)
 		for (lpMem = 0; lpMem < sSI.lpMaximumApplicationAddress; lpMem = (LPVOID)((DWORD)sMBI.BaseAddress + (DWORD)sMBI.RegionSize))
 		{
 			if (!VirtualQueryEx(hProcess, lpMem, &sMBI, sizeof(MEMORY_BASIC_INFORMATION)))
-				CondOutputDebugStringLastError(_TEXT("VirtualQueryEx"), GetLastError());
+				PrintError(_TEXT("VirtualQueryEx"));
 			else
 			{
 				if (MEM_COMMIT == sMBI.State)
@@ -1096,7 +1040,7 @@ BOOL AnalyzeNewPagesForNOPSleds(void)
 						{
 							alpvPages[iPages++] = sMBI.BaseAddress;
 							if (sHeapLockerSettings.dwVerbose > 0)
-								CondOutputDebugStringF(_TEXT("NOP-sled analysis page 0x%08x protection = 0x%04x size = 0x%04x"), sMBI.BaseAddress, sMBI.Protect, sMBI.RegionSize);
+								PrintInfo(_TEXT("NOP-sled analysis page 0x%08x protection = 0x%04x size = 0x%04x"), sMBI.BaseAddress, sMBI.Protect, sMBI.RegionSize);
 							if (!bFirstRun)
 							{
 								stCountNOP = 0;
@@ -1123,7 +1067,7 @@ BOOL AnalyzeNewPagesForNOPSleds(void)
 								}
 								if (stCountNOPMax >= sHeapLockerSettings.dwNOPSledLengthMin)
 								{
-									CondOutputDebugStringF(_TEXT(" Size of largest NOP-sled = %ld operation = 0x%02X start = 0x%08X"), stCountNOPMax, bOperationLargestSled, pbStartNOPSledMax);
+									PrintInfo(_TEXT(" Size of largest NOP-sled = %ld operation = 0x%02X start = 0x%08X"), stCountNOPMax, bOperationLargestSled, pbStartNOPSledMax);
 									if (sHeapLockerSettings.dwForceTermination)
 										_sntprintf_s(szOutput, countof(szOutput), _TRUNCATE, _TEXT("This document is probably malicious!\nClick OK to terminate this program (%s).\n\nTechnical details: NOP-sled detected\nlength = %ld\noperation = 0x%02X\nstart = 0x%08X"), NULL2EmptyString(GetExecutableName()), stCountNOPMax, bOperationLargestSled, pbStartNOPSledMax);
 									else
@@ -1140,17 +1084,13 @@ BOOL AnalyzeNewPagesForNOPSleds(void)
 	}
 	__except(1)
 	{
-		;
+		PrintError("Exception");
 	}
 
 	CloseHandle(hProcess);
 
 	return TRUE;
 }
-
-#ifdef __BORLANDC__
-#pragma warn -8057
-#endif
 
 DWORD WINAPI MonitorNewPagesForNOPSleds(LPVOID lpvArgument)
 {
@@ -1160,10 +1100,6 @@ DWORD WINAPI MonitorNewPagesForNOPSleds(LPVOID lpvArgument)
 
 	return 0;
 }
-
-#ifdef __BORLANDC__
-#pragma warn +8057
-#endif
 
 #define XSIZE 1024
 
@@ -1190,7 +1126,7 @@ void SearchKMPPreCompute(PBYTE pbSearchTerm, int iSearchTermSize, int aiKMPNext[
 	}
 	__except(1)
 	{
-		;
+		PrintError("Exception");
 	}
 }
 
@@ -1214,7 +1150,7 @@ PBYTE SearchPreviousNonWhiteSpaceCharacter(PBYTE pbStart, PBYTE pbLowerLimit, BY
 	}
 	__except(1)
 	{
-		;
+		PrintError("Exception");
 	}
 
 	return NULL;
@@ -1240,7 +1176,7 @@ PBYTE SearchNextNonWhiteSpaceCharacter(PBYTE pbStart, PBYTE pbUpperLimit, BYTE b
 	}
 	__except(1)
 	{
-		;
+		PrintError("Exception");
 	}
 
 	return NULL;
@@ -1281,7 +1217,7 @@ PBYTE SearchFunctionKMP(PBYTE pbSearchTerm, int iSearchTermSize, PBYTE pbMemory,
 	}
 	__except(1)
 	{
-		;
+		PrintError("Exception");
 	}
 
 	return NULL;
@@ -1303,7 +1239,7 @@ BOOL AnalyzeNewPagesToSearchThem(void)
 	hProcess = OpenProcess(PROCESS_QUERY_INFORMATION|PROCESS_VM_READ, FALSE, GetCurrentProcessId());
 	if (NULL == hProcess)
 	{
-		CondOutputDebugString(_TEXT("OpenProcess failed"));
+		PrintInfo(_TEXT("OpenProcess failed"));
 		return TRUE;
 	}
 
@@ -1315,7 +1251,7 @@ BOOL AnalyzeNewPagesToSearchThem(void)
 		for (lpMem = 0; lpMem < sSI.lpMaximumApplicationAddress; lpMem = (LPVOID)((DWORD)sMBI.BaseAddress + (DWORD)sMBI.RegionSize))
 		{
 			if (!VirtualQueryEx(hProcess, lpMem, &sMBI, sizeof(MEMORY_BASIC_INFORMATION)))
-				CondOutputDebugStringLastError(_TEXT("VirtualQueryEx"), GetLastError());
+				PrintError(_TEXT("VirtualQueryEx"));
 			else
 			{
 				if (MEM_COMMIT == sMBI.State)
@@ -1328,13 +1264,13 @@ BOOL AnalyzeNewPagesToSearchThem(void)
 						{
 							alpvPages[iPages++] = sMBI.BaseAddress;
 							if (sHeapLockerSettings.dwVerbose > 0)
-								CondOutputDebugStringF(_TEXT("Keyword analysis page 0x%08x protection = 0x%04x size = 0x%04x"), sMBI.BaseAddress, sMBI.Protect, sMBI.RegionSize);
+								PrintInfo(_TEXT("Keyword analysis page 0x%08x protection = 0x%04x size = 0x%04x"), sMBI.BaseAddress, sMBI.Protect, sMBI.RegionSize);
 							if (!bFirstRun)
 							{
 								pbFound = SearchFunctionKMP(sHeapLockerSettings.abSearch, sHeapLockerSettings.iSearchLen, (PBYTE)sMBI.BaseAddress, sMBI.RegionSize, sHeapLockerSettings.iSearchMode);
 								if (NULL != pbFound)
 								{
-									CondOutputDebugStringF(_TEXT(" Found string at 0x%08X"), pbFound);
+									PrintInfo(_TEXT(" Found string at 0x%08X"), pbFound);
 									if (sHeapLockerSettings.dwForceTermination)
 										_sntprintf_s(szOutput, countof(szOutput), _TRUNCATE, _TEXT("This document is probably malicious!\nClick OK to terminate this program (%s).\n\nTechnical details: string detected\nstart = 0x%08X\nstring = %s"), NULL2EmptyString(GetExecutableName()), pbFound, NULL2EmptyString(HexDump(pbFound, 50)));
 									else
@@ -1351,7 +1287,7 @@ BOOL AnalyzeNewPagesToSearchThem(void)
 	}
 	__except(1)
 	{
-		;
+		PrintError("Exception");
 	}
 
 	CloseHandle(hProcess);
@@ -1359,9 +1295,6 @@ BOOL AnalyzeNewPagesToSearchThem(void)
 	return TRUE;
 }
 
-#ifdef __BORLANDC__
-#pragma warn -8057
-#endif
 
 DWORD WINAPI MonitorNewPagesToSearchThem(LPVOID lpvArgument)
 {
@@ -1372,9 +1305,6 @@ DWORD WINAPI MonitorNewPagesToSearchThem(LPVOID lpvArgument)
 	return 0;
 }
 
-#ifdef __BORLANDC__
-#pragma warn +8057
-#endif
 
 typedef DWORD (WINAPI *NTALLOCATEVIRTUALMEMORY)(HANDLE, PVOID *, ULONG_PTR, PSIZE_T, ULONG, ULONG);
 
@@ -1391,7 +1321,7 @@ void PreallocatePage0(void)
 	if (NULL == hNTDLL)
 	{
 		if (sHeapLockerSettings.dwVerbose > 0)
-			CondOutputDebugStringLastError(_TEXT("LoadLibrary"), GetLastError());
+			PrintError(_TEXT("LoadLibrary"));
 		return;
 	}
 	else
@@ -1400,7 +1330,7 @@ void PreallocatePage0(void)
 		if (NULL == NtAllocateVirtualMemory)
 		{
 			if (sHeapLockerSettings.dwVerbose > 0)
-				CondOutputDebugStringLastError(_TEXT("GetProcAddress"), GetLastError());
+				PrintError(_TEXT("GetProcAddress"));
 			return;
 		}
 		else
@@ -1410,22 +1340,20 @@ void PreallocatePage0(void)
 			dwResult = NtAllocateVirtualMemory(GetCurrentProcess(), &pvBaseAddress, 0L, &stRegionSize, MEM_COMMIT | MEM_RESERVE, PAGE_NOACCESS);
 			if (sHeapLockerSettings.dwVerbose > 0)
 				if (0 == dwResult)
-					CondOutputDebugStringF(_TEXT("NULL page address = %08x memory size = %ld"), pvBaseAddress, stRegionSize);
+					PrintInfo(_TEXT("NULL page address = %08x memory size = %ld"), pvBaseAddress, stRegionSize);
 				else
-					CondOutputDebugStringF(_TEXT("NtAllocateVirtualMemory failed, return code = %ld"), dwResult);
+					PrintInfo(_TEXT("NtAllocateVirtualMemory failed, return code = %ld"), dwResult);
 		}
 	}
 }
-
-#ifdef __BORLANDC__
-#pragma warn -8057
-#endif
 
 DWORD WINAPI HeapLocker(LPVOID lpvArgument)
 {
 	HKEY hKeyApplication;
 
 	Sleep(100); // Sleep some time to wait for advapi32.dll to load completely (should this DLL be loaded via appinit_dll)
+
+	PrintInfo("Running HeapLocker");
 
 	hKeyApplication = GetApplicationRegKey();
 
@@ -1436,14 +1364,14 @@ DWORD WINAPI HeapLocker(LPVOID lpvArgument)
 
 	SetHeapLockerSettingsDefaults();
 
-	CondOutputDebugStringF(_TEXT("Maximum value for PrivateUsage = %ld MB (%d)"), sHeapLockerSettings.dwPrivateUsageMax, sHeapLockerSettings.iOrigin_dwPrivateUsageMax);
-	CondOutputDebugStringF(_TEXT("Minimum value for NOP-sled length = %ld (%d)"), sHeapLockerSettings.dwNOPSledLengthMin, sHeapLockerSettings.iOrigin_dwNOPSledLengthMin);
-	CondOutputDebugStringF(_TEXT("Pre-allocation of generic addresses = %ld (%d)"), sHeapLockerSettings.dwGenericPreAllocate, sHeapLockerSettings.iOrigin_dwGenericPreAllocate);
-	CondOutputDebugStringF(_TEXT("Search mode = %d (%d) length = %d (%d)"), sHeapLockerSettings.iSearchMode, sHeapLockerSettings.iOrigin_iSearchMode, sHeapLockerSettings.iSearchLen, sHeapLockerSettings.iOrigin_iSearchLen);
-	CondOutputDebugStringF(_TEXT("Pre-allocation of NULL page = %ld (%d)"), sHeapLockerSettings.dwPreallocatePage0, sHeapLockerSettings.iOrigin_dwPreallocatePage0);
-	CondOutputDebugStringF(_TEXT("Verbosity = %ld (%d)"), sHeapLockerSettings.dwVerbose, sHeapLockerSettings.iOrigin_dwVerbose);
-	CondOutputDebugStringF(_TEXT("Force process termination = %ld (%d)"), sHeapLockerSettings.dwForceTermination, sHeapLockerSettings.iOrigin_dwForceTermination);
-	CondOutputDebugStringF(_TEXT("Resume monitoring = %ld (%d)"), sHeapLockerSettings.dwResumeMonitoring, sHeapLockerSettings.iOrigin_dwResumeMonitoring);
+	PrintInfo(_TEXT("Maximum value for PrivateUsage = %ld MB (%d)"), sHeapLockerSettings.dwPrivateUsageMax, sHeapLockerSettings.iOrigin_dwPrivateUsageMax);
+	PrintInfo(_TEXT("Minimum value for NOP-sled length = %ld (%d)"), sHeapLockerSettings.dwNOPSledLengthMin, sHeapLockerSettings.iOrigin_dwNOPSledLengthMin);
+	PrintInfo(_TEXT("Pre-allocation of generic addresses = %ld (%d)"), sHeapLockerSettings.dwGenericPreAllocate, sHeapLockerSettings.iOrigin_dwGenericPreAllocate);
+	PrintInfo(_TEXT("Search mode = %d (%d) length = %d (%d)"), sHeapLockerSettings.iSearchMode, sHeapLockerSettings.iOrigin_iSearchMode, sHeapLockerSettings.iSearchLen, sHeapLockerSettings.iOrigin_iSearchLen);
+	PrintInfo(_TEXT("Pre-allocation of NULL page = %ld (%d)"), sHeapLockerSettings.dwPreallocatePage0, sHeapLockerSettings.iOrigin_dwPreallocatePage0);
+	PrintInfo(_TEXT("Verbosity = %ld (%d)"), sHeapLockerSettings.dwVerbose, sHeapLockerSettings.iOrigin_dwVerbose);
+	PrintInfo(_TEXT("Force process termination = %ld (%d)"), sHeapLockerSettings.dwForceTermination, sHeapLockerSettings.iOrigin_dwForceTermination);
+	PrintInfo(_TEXT("Resume monitoring = %ld (%d)"), sHeapLockerSettings.dwResumeMonitoring, sHeapLockerSettings.iOrigin_dwResumeMonitoring);
 
 	ProtectAddresses(hKeyApplication);
 	if (NULL != hKeyApplication)
@@ -1460,73 +1388,29 @@ DWORD WINAPI HeapLocker(LPVOID lpvArgument)
 
 	if (sHeapLockerSettings.iSearchLen > 0)
 		CreateThread(NULL, 0, MonitorNewPagesToSearchThem, NULL, 0, NULL);
-
 	return 0;
 }
-
-#ifdef __BORLANDC__
-#pragma warn +8057
-#endif
-
-/*
-#ifdef __BORLANDC__
-#pragma warn -8057
-#endif
-
-DWORD WINAPI SleepAndCallEntryPoint(LPVOID lpvArgument)
-{
-	void (*pt2Function)(void) = 0x30303030;
-
-	Sleep(2000);
-	(*pt2Function)();
-	return 0;
-}
-
-#ifdef __BORLANDC__
-#pragma warn +8057
-#endif
-
-void CallDelayed(void)
-{
-	CreateThread(NULL, 0, SleepAndCallEntryPoint, NULL, 0, NULL);
-}
-
-
-#ifdef __BORLANDC__
-#pragma warn +8057
-#endif
-*/
 
 __declspec(dllexport) void Dummy(void)
 {
 }
 
-#ifdef __BORLANDC__
-#pragma warn -8057
-#endif
-
-BOOL WINAPI DllMain(HINSTANCE hiDLL, DWORD dwReason, LPVOID lpReserved)
+BOOL APIENTRY DllMain( HMODULE hModule,
+                       DWORD  dwReason,
+                       LPVOID lpReserved
+					 )
 {
-	switch(dwReason)
+	if (dwReason == DLL_PROCESS_ATTACH)
 	{
-		case DLL_PROCESS_ATTACH:
-			CreateThread(NULL, 0, HeapLocker, NULL, 0, NULL);
-			break;
+		PrintInfo("Running OpenHips Protector (ohipsp), compiled on: %s", __TIMESTAMP__);
+		PrintInfo("Loaded into a process %d", GetCurrentProcessId());
 
-		case DLL_THREAD_ATTACH:
-			break;
-
-		case DLL_THREAD_DETACH:
-			break;
-
-		case DLL_PROCESS_DETACH:
-			break;
+		CreateThread(NULL, 0, HeapLocker, NULL, 0, NULL);
+	}
+	else if (dwReason == DLL_PROCESS_DETACH)
+	{
+		PrintInfo("Unloading ohipsp from process %d", GetCurrentProcessId());
 	}
 
 	return TRUE;
 }
-
-#ifdef __BORLANDC__
-#pragma warn +8057
-#endif
-
