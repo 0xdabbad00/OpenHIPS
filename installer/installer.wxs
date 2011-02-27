@@ -50,6 +50,40 @@
 							
 			<RegistryKey Root="HKLM" Key="Software\OpenHIPS\HeapLocker" Action="createAndRemoveOnUninstall">
 				<RegistryValue Type="integer" Name="PrivateUsageMax" Value="1000" />
+				
+				<RegistryKey Key="Applications" Action="createAndRemoveOnUninstall">
+					<RegistryKey Key="acrord32.exe" Action="createAndRemoveOnUninstall">
+						<RegistryValue Type="integer" Name="NOPSledLengthMin" Value="0" />
+						<RegistryValue Type="integer" Name="PrivateUsageMax" Value="500" />
+						<RegistryValue Type="integer" Name="GenericPreAllocate" Value="1" />
+						<RegistryValue Type="binary"  Name="SearchString" Value="75006e00650073006300610070006500" />
+						<RegistryValue Type="integer" Name="SearchMode" Value="1" />
+						<RegistryValue Type="integer" Name="NullPagePreallocate" Value="0" />
+						<RegistryValue Type="integer" Name="Verbose" Value="1" />
+						<RegistryKey Key="Addresses" Action="createAndRemoveOnUninstall">
+							<RegistryValue Type="integer" Name="util.printf" Value="808464432" />
+						</RegistryKey>
+					</RegistryKey>
+					<RegistryKey Key="excel.exe" Action="createAndRemoveOnUninstall">
+						<RegistryValue Type="integer" Name="NOPSledLengthMin" Value="10000" />
+						<RegistryValue Type="integer" Name="PrivateUsageMax" Value="500" />
+					</RegistryKey>
+					<RegistryKey Key="firefox.exe" Action="createAndRemoveOnUninstall">
+						<RegistryValue Type="integer" Name="NOPSledLengthMin" Value="50000" />
+						<RegistryValue Type="integer" Name="PrivateUsageMax" Value="500" />
+						<RegistryValue Type="integer" Name="GenericPreAllocate" Value="1" />
+					</RegistryKey>
+					<RegistryKey Key="foxit reader.exe" Action="createAndRemoveOnUninstall">
+						<RegistryValue Type="integer" Name="NOPSledLengthMin" Value="50000" />
+						<RegistryValue Type="integer" Name="PrivateUsageMax" Value="500" />
+						<RegistryValue Type="integer" Name="GenericPreAllocate" Value="1" />
+					</RegistryKey>
+					<RegistryKey Key="iexplore.exe" Action="createAndRemoveOnUninstall">
+						<RegistryValue Type="integer" Name="NOPSledLengthMin" Value="50000" />
+						<RegistryValue Type="integer" Name="PrivateUsageMax" Value="500" />
+						<RegistryValue Type="integer" Name="GenericPreAllocate" Value="1" />
+					</RegistryKey>
+				</RegistryKey>
 			</RegistryKey>
 
 		</Component>
