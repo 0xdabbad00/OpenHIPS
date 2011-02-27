@@ -27,24 +27,27 @@
 
 #pragma comment(lib, "psapi.lib")
 
+///////////////////////////////////////////////////////////////////////////////
+// Globals
+
 HEAPLOCKER_SETTINGS sHeapLockerSettings;
 
 BYTE abHeapLockerShellcode[] = {
-	0x59,														// pop ecx
-	0x33, 0xC0,											// xor eax, eax
-	0x50,														// push eax
-	0x50,														// push eax
-	0x51,														// push ecx
+	0x59,								// pop ecx
+	0x33, 0xC0,							// xor eax, eax
+	0x50,								// push eax
+	0x50,								// push eax
+	0x51,								// push ecx
 	0x68, 0x67, 0x45, 0x23, 0x01,		// push 0x01234567     ; address of EntryPoint
-	0x50,														// push eax
-	0x50,														// push eax
+	0x50,								// push eax
+	0x50,								// push eax
 	0xB8, 0xEF, 0xCD, 0xAB, 0x89,		// mov eax, 0x89ABCDEF ; CreateThread
-	0xFF, 0xD0,											// call eax
+	0xFF, 0xD0,							// call eax
 	0xB8, 0x67, 0x45, 0x23, 0x01,		// mov eax, 0x01234567 ; GetCurrentThread
-	0xFF, 0xD0,											// call eax
-	0x50,														// push eax
+	0xFF, 0xD0,							// call eax
+	0x50,								// push eax
 	0xB8, 0x67, 0x45, 0x23, 0x01,		// mov eax, 0x01234567 ; SuspendThread
-	0xFF, 0xD0											// call eax
+	0xFF, 0xD0							// call eax
 };
 
 BYTE abNOPs[] = {
@@ -87,14 +90,26 @@ BYTE abNOPs[] = {
 
 BYTE abNOPSledDetection[256];
 
+static TCHAR szModuleName[MAX_PATH];
+static TCHAR szDump[256];
+
+///////////////////////////////////////////////////////////////////////////////
+// Functions
+
+/******************************************************************************
+ * @return An empty string if pszString is NULL
+ ******************************************************************************/
 LPTSTR NULL2EmptyString(LPTSTR pszString)
 {
 	return pszString == NULL ? "" : pszString;
 }
 
+
+/******************************************************************************
+ * @return An empty string if pszString is NULL
+ ******************************************************************************/
 LPTSTR GetExecutableName(void)
 {
-	static TCHAR szModuleName[MAX_PATH];
 	LPTSTR pszEXE;
 
 	__try
@@ -106,7 +121,9 @@ LPTSTR GetExecutableName(void)
 		}
 		pszEXE = _tcsrchr(szModuleName, '\\');
 		if (NULL == pszEXE)
+		{
 			return NULL;
+		}
 		return ++pszEXE;
 	}
 	__except(1)
@@ -116,16 +133,21 @@ LPTSTR GetExecutableName(void)
 	}
 }
 
+
+/******************************************************************************
+ * @return Returns a pointer to a global var containing a hexdump of the given values
+ ******************************************************************************/
 LPTSTR HexDump(PBYTE pbFound, int iSize)
 {
-	static TCHAR szDump[256];
 	int iIter;
 
 	__try
 	{
 		szDump[iSize] = '\0';
 		for (iIter = 0; iIter < iSize && iIter < countof(szDump); iIter++)
+		{
 			szDump[iIter] = isprint(*(pbFound + iIter*2)) ? *(pbFound + iIter*2) : '.';
+		}
 		PrintInfo(_TEXT(" %08X: %s"), pbFound, szDump);
 		return szDump;
 	}
@@ -137,38 +159,60 @@ LPTSTR HexDump(PBYTE pbFound, int iSize)
 	return NULL;
 }
 
+
+/******************************************************************************
+ * Suspend or resume all threads in the current process except this one
+ * @param bSuspend if TRUE, suspend all threads, else resume them
+ ******************************************************************************/
 void SuspendThreadsOfCurrentProcessExceptCurrentThread(BOOL bSuspend)
 {
 	HANDLE hThreadSnap;
 	THREADENTRY32 sTE32 = {0};
 	BOOL bLoop;
-
+	
+	// Suspended threads increments a suspend count, so no need to keep track of which thread were
+	// already suspended
 	__try
 	{
 		hThreadSnap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
 		if (INVALID_HANDLE_VALUE == hThreadSnap)
 		{
-			PrintError(_TEXT("CreateToolhelp32Snapshot"));
+			PrintError(_TEXT("CreateToolhelp32Snapshot failed"));
 			return;
 		}
 
 		sTE32.dwSize = sizeof(sTE32);
 
 		for (bLoop = Thread32First(hThreadSnap, &sTE32); bLoop; bLoop = Thread32Next(hThreadSnap, &sTE32))
+		{
 			if (GetCurrentProcessId() == sTE32.th32OwnerProcessID && GetCurrentThreadId() != sTE32.th32ThreadID)
 			{
 				HANDLE hThread = OpenThread(THREAD_SUSPEND_RESUME, FALSE, sTE32.th32ThreadID);
 				if (hThread != NULL)
 				{
+					DWORD dwError = 0;
 					if (bSuspend)
-						PrintInfo(_TEXT("Suspending thread %08X: %u"), sTE32.th32ThreadID, SuspendThread(hThread));
+					{
+						PrintInfo(_TEXT("Suspending thread %08X"), sTE32.th32ThreadID);
+						dwError = SuspendThread(hThread);
+					}
 					else
-						PrintInfo(_TEXT("Resuming thread %08X: %u"), sTE32.th32ThreadID, ResumeThread(hThread));
+					{
+						PrintInfo(_TEXT("Resuming thread %08X"), sTE32.th32ThreadID);
+						dwError = ResumeThread(hThread);
+					}
+					if (dwError = -1)
+					{
+						PrintError(_TEXT("Thread suspend/resume failed on thread %08X"), sTE32.th32ThreadID);
+					}
 					CloseHandle(hThread);
 				}
 				else
-					PrintError(_TEXT("OpenThread"));
+				{
+					PrintError(_TEXT("OpenThread failed"));
+				}
 			}
+		}
 
 		CloseHandle(hThreadSnap);
 	}
@@ -181,27 +225,57 @@ void SuspendThreadsOfCurrentProcessExceptCurrentThread(BOOL bSuspend)
 	return;
 }
 
+
+/******************************************************************************
+ * Display a message box that asks if the process should be terminated
+ * @param lpvArgument	The string to display
+ ******************************************************************************/
 DWORD WINAPI DisplayMessageBox(LPVOID lpvArgument)
 {
+	BOOL bTerminate = FALSE;
+
+	// Check if we should force the termination or ask the user
 	if (sHeapLockerSettings.dwForceTermination)
 	{
+		// Inform the user we are forcing termination
 		MessageBox(NULL, (LPCSTR)lpvArgument, MESSAGEBOX_TITLE, MB_OK | MB_ICONSTOP);
-		TerminateProcess(GetCurrentProcess(), 0);
+		bTerminate = TRUE;
 	}
-	else if (IDYES == MessageBox(NULL, (LPCSTR)lpvArgument, MESSAGEBOX_TITLE, MB_YESNO | MB_ICONEXCLAMATION))
-		TerminateProcess(GetCurrentProcess(), 0);
-	else
-		return FALSE;
+	else 
+	{
+		// Ask the user if we should force termination
+		if (IDYES == MessageBox(NULL, (LPCSTR)lpvArgument, MESSAGEBOX_TITLE, MB_YESNO | MB_ICONEXCLAMATION))
+		{
+			bTerminate = TRUE;
+		}
+	}
+
+	// Terminate the process if needed
+	if (bTerminate)
+	{
+		if (!TerminateProcess(GetCurrentProcess(), 0))
+		{
+			PrintError(_TEXT("TerminateProcess failed"));
+			return FALSE;
+		}
+	}
+
 	return TRUE;
 }
 
+
+/******************************************************************************
+ * Suspend all threads, but create a message box in an unsuspended thread
+ ******************************************************************************/
 BOOL ThreadedMessageBox(LPTSTR pszOutput)
 {
 	HANDLE hThreadMessageBox;
 	DWORD dwExitCode;
 
 	hThreadMessageBox = CreateThread(NULL, 0, DisplayMessageBox, pszOutput, 0, NULL);
+	// TODO MUST do something cleaner here instead of a sleep
 	Sleep(100);
+	// Suspend all threads
 	SuspendThreadsOfCurrentProcessExceptCurrentThread(TRUE);
 	ResumeThread(hThreadMessageBox);
 	dwExitCode = STILL_ACTIVE;
@@ -211,10 +285,16 @@ BOOL ThreadedMessageBox(LPTSTR pszOutput)
 		Sleep(500);
 	}
 	CloseHandle(hThreadMessageBox);
+	// Resume all threads
 	SuspendThreadsOfCurrentProcessExceptCurrentThread(FALSE);
 	return FALSE;
 }
 
+
+/******************************************************************************
+ * Shell code gets alloc'd in areas likely to be hit by an exploit and will cause
+ * this function to run
+ ******************************************************************************/
 DWORD WINAPI EntryPoint(LPVOID lpvArgument)
 {
 	TCHAR szOutput[256];
@@ -226,17 +306,26 @@ DWORD WINAPI EntryPoint(LPVOID lpvArgument)
 	return 0;
 }
 
+
+/******************************************************************************
+ * Alloc's our own shell code to display a message, in area likely to be hit by
+ * an exploit
+ ******************************************************************************/
 PBYTE ShellCodeToEntryPoint(void)
 {
-	static PBYTE pbAddress;
+	static PBYTE pbAddress = NULL;
 	LPVOID lpvPage;
-	MEMORY_BASIC_INFORMATION sMBI;
+	MEMORY_BASIC_INFORMATION sMBI = {0};
 	unsigned int uiIter;
 	DWORD dwOldProtect;
 	
 	if (NULL != pbAddress)
+	{
+		// This function has already been set
 		return pbAddress;
+	}
 	
+	// TODO MUST I don't like this at all. It's trying to alloc mem at a random address, until it finds a place that works
 	srand((unsigned int)time(0));
 	for (lpvPage = NULL; NULL == lpvPage;)
 	{
@@ -248,15 +337,19 @@ PBYTE ShellCodeToEntryPoint(void)
 		PrintError(_TEXT("VirtualQuery"));
 		return NULL;
 	}
+	// Copy in the shellcode
 	for (uiIter = 0; uiIter < sizeof(abHeapLockerShellcode); uiIter++)
+	{
 		*(pbAddress + uiIter) = abHeapLockerShellcode[uiIter];
+	}
+	// Copy in the variable values
 	*(unsigned int *)(pbAddress + INDEX_ENTRYPOINT) = (unsigned int)EntryPoint;
 	*(unsigned int *)(pbAddress + INDEX_CREATETHREAD) = (unsigned int)CreateThread;
 	*(unsigned int *)(pbAddress + INDEX_GETCURRENTTHREAD) = (unsigned int)GetCurrentThread;
 	*(unsigned int *)(pbAddress + INDEX_SUSPENDTHREAD) = (unsigned int)SuspendThread;
 	if (FUNCTION_FAILED(VirtualProtect(lpvPage, sMBI.RegionSize, PAGE_EXECUTE, &dwOldProtect)))
 	{
-		PrintError(_TEXT("VirtualProtect"));
+		PrintError(_TEXT("VirtualProtect failed"));
 		return NULL;
 	}
 	if (sHeapLockerSettings.dwVerbose > 0)
@@ -264,9 +357,13 @@ PBYTE ShellCodeToEntryPoint(void)
 	return pbAddress;
 }
 
+
+/******************************************************************************
+ * Fills a memory page with calls to our shell-code
+ ******************************************************************************/
 SIZE_T PreallocateAddress(DWORD dwAddress, int iMode)
 {
-	MEMORY_BASIC_INFORMATION sMBI;
+	MEMORY_BASIC_INFORMATION sMBI = {0};
 	LPVOID lpvPage;
 	PBYTE pbAddress;
 	unsigned int uiIter;
@@ -281,22 +378,30 @@ SIZE_T PreallocateAddress(DWORD dwAddress, int iMode)
 		if (NULL == lpvPage)
 		{
 			if (sHeapLockerSettings.dwVerbose > 0)
-				PrintError(_TEXT("VirtualAlloc"));
+			{
+				PrintError(_TEXT("VirtualAlloc failed"));
+			}
 			return stReturn;
 		}
 		if (FUNCTION_FAILED(VirtualQuery(lpvPage, &sMBI, sizeof(sMBI))))
 		{
-			PrintError(_TEXT("VirtualQuery"));
+			PrintError(_TEXT("VirtualQuery failed"));
 			return stReturn;
 		}
 		if (sHeapLockerSettings.dwVerbose > 0)
+		{
 			PrintInfo(_TEXT("Exploit address = %08x mode = %d page address = %08x memory size = %ld"), pbAddress, iMode, lpvPage, sMBI.RegionSize);
+		}
 		stReturn = sMBI.RegionSize;
 		if (ADDRESS_MODE_NOACCESS != iMode)
 		{
 			srand((unsigned int)time(0));
+			// Fill region with nop-sled
 			for (uiIter = 0; uiIter < sMBI.RegionSize; uiIter++)
+			{
 				*((PBYTE)lpvPage + uiIter) = abNOPs[rand() % countof(abNOPs)];
+			}
+			// TODO MUST Why is this calling rand()?
 			pbAddress = (PBYTE)lpvPage + sMBI.RegionSize - 7 - rand() % 0x10;
 			*pbAddress = 0xB8; // mov eax
 			*(unsigned int *)(pbAddress + 1) = (unsigned int)ShellCodeToEntryPoint();
@@ -318,6 +423,11 @@ SIZE_T PreallocateAddress(DWORD dwAddress, int iMode)
 	return stReturn;
 }
 
+
+/******************************************************************************
+ * Reads from the registry to determine if memory for the given process should
+ * be protected, and if so protects it.
+ ******************************************************************************/
 void ProtectAddresses(HKEY hKeyApplication)
 {
 	HKEY hKey;
@@ -341,11 +451,17 @@ void ProtectAddresses(HKEY hKeyApplication)
 			if (REG_DWORD == dwType)
 			{
 				if (sHeapLockerSettings.dwVerbose > 0)
+				{
 					PrintInfo(_TEXT("Pre-allocating page for address 0x%08x (%s)"), dwValue, szValueName);
+				}
 				if (isdigit(szValueName[0]))
+				{
 					stMemory += PreallocateAddress(dwValue, szValueName[0] - '0');
+				}
 				else
+				{
 					stMemory += PreallocateAddress(dwValue, ADDRESS_MODE_NOACCESS);
+				}
 			}
 			dwValueNameSize = countof(szValueName);
 			dwValueSize = sizeof(dwValue);
@@ -353,12 +469,22 @@ void ProtectAddresses(HKEY hKeyApplication)
 		RegCloseKey(hKey);
 	}
 	if (sHeapLockerSettings.dwGenericPreAllocate != 0xFFFFFFFF)
+	{
 		for (iIter = 1; iIter < 128; iIter++)
+		{
 			stMemory += PreallocateAddress(iIter * 0x1000000 + iIter * 0x10000 + iIter * 0x100 + iIter, sHeapLockerSettings.dwGenericPreAllocate);
+		}
+	}
 	if (sHeapLockerSettings.dwVerbose > 0)
+	{
 		PrintInfo(_TEXT("Memory used for pre-allocated pages = %ld KB"), stMemory / 1024);
+	}
 }
 
+
+/******************************************************************************
+ * Read application specific registry settings
+ ******************************************************************************/
 void ReadHeapLockerSettingsFromRegistryApplication(HKEY hKeyApplication)
 {
 	DWORD dwType;
@@ -369,46 +495,57 @@ void ReadHeapLockerSettingsFromRegistryApplication(HKEY hKeyApplication)
 
 	dwValueSize = sizeof(dwValue);
 	if (IS_SUCCESS(RegQueryValueEx(hKeyApplication, REGISTRY_PRIVATE_USAGE_MAX, 0, &dwType, (LPBYTE) &dwValue, &dwValueSize)))
+	{
 		if (REG_DWORD == dwType && sHeapLockerSettings.iOrigin_dwPrivateUsageMax < ORIGIN_REGISTRY_APPLICATION)
 		{
 			sHeapLockerSettings.iOrigin_dwPrivateUsageMax = ORIGIN_REGISTRY_APPLICATION;
 			sHeapLockerSettings.dwPrivateUsageMax = dwValue;
 		}
+	}
 
 	dwValueSize = sizeof(dwValue);
 	if (IS_SUCCESS(RegQueryValueEx(hKeyApplication, REGISTRY_NOP_SLED_LENGTH_MAX, 0, &dwType, (LPBYTE) &dwValue, &dwValueSize)))
+	{
 		if (REG_DWORD == dwType && sHeapLockerSettings.iOrigin_dwNOPSledLengthMin < ORIGIN_REGISTRY_APPLICATION)
 		{
 			sHeapLockerSettings.iOrigin_dwNOPSledLengthMin = ORIGIN_REGISTRY_APPLICATION;
 			sHeapLockerSettings.dwNOPSledLengthMin = dwValue;
 		}
+	}
 
 	dwValueSize = sizeof(dwValue);
 	if (IS_SUCCESS(RegQueryValueEx(hKeyApplication, REGISTRY_GENERIC_PRE_ALLOCATE, 0, &dwType, (LPBYTE) &dwValue, &dwValueSize)))
+	{
 		if (REG_DWORD == dwType && sHeapLockerSettings.iOrigin_dwGenericPreAllocate < ORIGIN_REGISTRY_APPLICATION)
 		{
 			sHeapLockerSettings.iOrigin_dwGenericPreAllocate = ORIGIN_REGISTRY_APPLICATION;
 			sHeapLockerSettings.dwGenericPreAllocate = dwValue;
 		}
+	}
 
 	dwValueSize = sizeof(dwValue);
 	if (IS_SUCCESS(RegQueryValueEx(hKeyApplication, REGISTRY_VERBOSE, 0, &dwType, (LPBYTE) &dwValue, &dwValueSize)))
+	{
 		if (REG_DWORD == dwType && sHeapLockerSettings.iOrigin_dwVerbose < ORIGIN_REGISTRY_APPLICATION)
 		{
 			sHeapLockerSettings.iOrigin_dwVerbose = ORIGIN_REGISTRY_APPLICATION;
 			sHeapLockerSettings.dwVerbose = dwValue;
 		}
+	}
 
 	dwValueSize = sizeof(dwValue);
 	if (IS_SUCCESS(RegQueryValueEx(hKeyApplication, REGISTRY_SEARCH_MODE, 0, &dwType, (LPBYTE) &dwValue, &dwValueSize)))
+	{
 		if (REG_DWORD == dwType && sHeapLockerSettings.iOrigin_iSearchMode < ORIGIN_REGISTRY_APPLICATION)
 		{
 			sHeapLockerSettings.iOrigin_iSearchMode = ORIGIN_REGISTRY_APPLICATION;
 			sHeapLockerSettings.iSearchMode = dwValue;
 		}
+	}
 
 	dwValueSize = sizeof(abValue);
 	if (IS_SUCCESS(RegQueryValueEx(hKeyApplication, REGISTRY_SEARCH_STRING, 0, &dwType, abValue, &dwValueSize)))
+	{
 		if (REG_BINARY == dwType && sHeapLockerSettings.iOrigin_iSearchLen < ORIGIN_REGISTRY_APPLICATION)
 		{
 			sHeapLockerSettings.iOrigin_iSearchLen = ORIGIN_REGISTRY_APPLICATION;
@@ -416,32 +553,43 @@ void ReadHeapLockerSettingsFromRegistryApplication(HKEY hKeyApplication)
 			for (iIter = 0; iIter < sHeapLockerSettings.iSearchLen; iIter++)
 				sHeapLockerSettings.abSearch[iIter] = abValue[iIter];
 		}
+	}
 
 	dwValueSize = sizeof(dwValue);
 	if (IS_SUCCESS(RegQueryValueEx(hKeyApplication, REGISTRY_NULL_PAGE_PRE_ALLOCATE, 0, &dwType, (LPBYTE) &dwValue, &dwValueSize)))
+	{
 		if (REG_DWORD == dwType && sHeapLockerSettings.iOrigin_dwPreallocatePage0 < ORIGIN_REGISTRY_APPLICATION)
 		{
 			sHeapLockerSettings.iOrigin_dwPreallocatePage0 = ORIGIN_REGISTRY_APPLICATION;
 			sHeapLockerSettings.dwPreallocatePage0 = dwValue;
 		}
+	}
 
 	dwValueSize = sizeof(dwValue);
 	if (IS_SUCCESS(RegQueryValueEx(hKeyApplication, REGISTRY_FORCE_TERMINATION, 0, &dwType, (LPBYTE) &dwValue, &dwValueSize)))
+	{
 		if (REG_DWORD == dwType && sHeapLockerSettings.iOrigin_dwForceTermination < ORIGIN_REGISTRY_APPLICATION)
 		{
 			sHeapLockerSettings.iOrigin_dwForceTermination = ORIGIN_REGISTRY_APPLICATION;
 			sHeapLockerSettings.dwForceTermination = dwValue;
 		}
+	}
 
 	dwValueSize = sizeof(dwValue);
 	if (IS_SUCCESS(RegQueryValueEx(hKeyApplication, REGISTRY_RESUME_MONITORING, 0, &dwType, (LPBYTE) &dwValue, &dwValueSize)))
+	{
 		if (REG_DWORD == dwType && sHeapLockerSettings.iOrigin_dwResumeMonitoring < ORIGIN_REGISTRY_APPLICATION)
 		{
 			sHeapLockerSettings.iOrigin_dwResumeMonitoring = ORIGIN_REGISTRY_APPLICATION;
 			sHeapLockerSettings.dwResumeMonitoring = dwValue;
 		}
+	}
 }
 
+
+/******************************************************************************
+ * Read generic HeapLocker settings from the registry
+ ******************************************************************************/
 void ReadHeapLockerSettingsFromRegistry(void)
 {
 	HKEY hKey;
@@ -455,82 +603,105 @@ void ReadHeapLockerSettingsFromRegistry(void)
 	{
 		dwValueSize = sizeof(dwValue);
 		if (IS_SUCCESS(RegQueryValueEx(hKey, REGISTRY_PRIVATE_USAGE_MAX, 0, &dwType, (LPBYTE) &dwValue, &dwValueSize)))
+		{
 			if (REG_DWORD == dwType && sHeapLockerSettings.iOrigin_dwPrivateUsageMax < ORIGIN_REGISTRY_GENERIC)
 			{
 				sHeapLockerSettings.iOrigin_dwPrivateUsageMax = ORIGIN_REGISTRY_GENERIC;
 				sHeapLockerSettings.dwPrivateUsageMax = dwValue;
 			}
+		}
 
 		dwValueSize = sizeof(dwValue);
 		if (IS_SUCCESS(RegQueryValueEx(hKey, REGISTRY_NOP_SLED_LENGTH_MAX, 0, &dwType, (LPBYTE) &dwValue, &dwValueSize)))
+		{
 			if (REG_DWORD == dwType && sHeapLockerSettings.iOrigin_dwNOPSledLengthMin < ORIGIN_REGISTRY_GENERIC)
 			{
 				sHeapLockerSettings.iOrigin_dwNOPSledLengthMin = ORIGIN_REGISTRY_GENERIC;
 				sHeapLockerSettings.dwNOPSledLengthMin = dwValue;
 			}
+		}
 
 		dwValueSize = sizeof(dwValue);
 		if (IS_SUCCESS(RegQueryValueEx(hKey, REGISTRY_GENERIC_PRE_ALLOCATE, 0, &dwType, (LPBYTE) &dwValue, &dwValueSize)))
+		{
 			if (REG_DWORD == dwType && sHeapLockerSettings.iOrigin_dwGenericPreAllocate < ORIGIN_REGISTRY_GENERIC)
 			{
 				sHeapLockerSettings.iOrigin_dwGenericPreAllocate = ORIGIN_REGISTRY_GENERIC;
 				sHeapLockerSettings.dwGenericPreAllocate = dwValue;
 			}
+		}
 
 		dwValueSize = sizeof(dwValue);
 		if (IS_SUCCESS(RegQueryValueEx(hKey, REGISTRY_VERBOSE, 0, &dwType, (LPBYTE) &dwValue, &dwValueSize)))
+		{
 			if (REG_DWORD == dwType && sHeapLockerSettings.iOrigin_dwVerbose < ORIGIN_REGISTRY_GENERIC)
 			{
 				sHeapLockerSettings.iOrigin_dwVerbose = ORIGIN_REGISTRY_GENERIC;
 				sHeapLockerSettings.dwVerbose = dwValue;
 			}
+		}
 
 		dwValueSize = sizeof(dwValue);
 		if (IS_SUCCESS(RegQueryValueEx(hKey, REGISTRY_SEARCH_MODE, 0, &dwType, (LPBYTE) &dwValue, &dwValueSize)))
+		{
 			if (REG_DWORD == dwType && sHeapLockerSettings.iOrigin_iSearchMode < ORIGIN_REGISTRY_GENERIC)
 			{
 				sHeapLockerSettings.iOrigin_iSearchMode = ORIGIN_REGISTRY_GENERIC;
 				sHeapLockerSettings.iSearchMode = dwValue;
 			}
+		}
 
 		dwValueSize = sizeof(abValue);
 		if (IS_SUCCESS(RegQueryValueEx(hKey, REGISTRY_SEARCH_STRING, 0, &dwType, abValue, &dwValueSize)))
+		{
 			if (REG_BINARY == dwType && sHeapLockerSettings.iOrigin_iSearchLen < ORIGIN_REGISTRY_GENERIC)
 			{
 				sHeapLockerSettings.iOrigin_iSearchLen = ORIGIN_REGISTRY_GENERIC;
 				sHeapLockerSettings.iSearchLen = dwValueSize;
 				for (iIter = 0; iIter < sHeapLockerSettings.iSearchLen; iIter++)
+				{
 					sHeapLockerSettings.abSearch[iIter] = abValue[iIter];
+				}
 			}
+		}
 
 		dwValueSize = sizeof(dwValue);
 		if (IS_SUCCESS(RegQueryValueEx(hKey, REGISTRY_NULL_PAGE_PRE_ALLOCATE, 0, &dwType, (LPBYTE) &dwValue, &dwValueSize)))
+		{
 			if (REG_DWORD == dwType && sHeapLockerSettings.iOrigin_dwPreallocatePage0 < ORIGIN_REGISTRY_GENERIC)
 			{
 				sHeapLockerSettings.iOrigin_dwPreallocatePage0 = ORIGIN_REGISTRY_GENERIC;
 				sHeapLockerSettings.dwPreallocatePage0 = dwValue;
 			}
+		}
 
 		dwValueSize = sizeof(dwValue);
 		if (IS_SUCCESS(RegQueryValueEx(hKey, REGISTRY_FORCE_TERMINATION, 0, &dwType, (LPBYTE) &dwValue, &dwValueSize)))
+		{
 			if (REG_DWORD == dwType && sHeapLockerSettings.iOrigin_dwForceTermination < ORIGIN_REGISTRY_GENERIC)
 			{
 				sHeapLockerSettings.iOrigin_dwForceTermination = ORIGIN_REGISTRY_GENERIC;
 				sHeapLockerSettings.dwForceTermination = dwValue;
 			}
+		}
 
 		dwValueSize = sizeof(dwValue);
 		if (IS_SUCCESS(RegQueryValueEx(hKey, REGISTRY_RESUME_MONITORING, 0, &dwType, (LPBYTE) &dwValue, &dwValueSize)))
+		{
 			if (REG_DWORD == dwType && sHeapLockerSettings.iOrigin_dwResumeMonitoring < ORIGIN_REGISTRY_GENERIC)
 			{
 				sHeapLockerSettings.iOrigin_dwResumeMonitoring = ORIGIN_REGISTRY_GENERIC;
 				sHeapLockerSettings.dwResumeMonitoring = dwValue;
 			}
+		}
 
 		RegCloseKey(hKey);
 	}
 }
 
+/******************************************************************************
+ * Set default HeapLocker settings
+ ******************************************************************************/
 void SetHeapLockerSettingsDefaults(void)
 {
 	if (sHeapLockerSettings.iOrigin_dwPrivateUsageMax < ORIGIN_DEFAULT)
@@ -588,6 +759,10 @@ void SetHeapLockerSettingsDefaults(void)
 	}
 }
 
+
+/******************************************************************************
+ * Check private memory usage
+ ******************************************************************************/
 BOOL CheckPrivateUsage(void)
 {
 	PROCESS_MEMORY_COUNTERS_EX sPMCE;
@@ -595,28 +770,48 @@ BOOL CheckPrivateUsage(void)
 
 	GetProcessMemoryInfo(GetCurrentProcess(), (PPROCESS_MEMORY_COUNTERS)&sPMCE, sizeof(sPMCE));
 	if (sHeapLockerSettings.dwVerbose > 0)
+	{
 		PrintInfo(_TEXT("PrivateUsage %ld MB"), sPMCE.PrivateUsage / 1024 / 1024);
-//	PrintInfo(_TEXT("Sum %ld MB"), (sPMCE.PrivateUsage + sPMCE.WorkingSetSize + sPMCE.QuotaPagedPoolUsage + sPMCE.QuotaNonPagedPoolUsage + sPMCE.PagefileUsage) / 1024 / 1024);
+	}
+	//	PrintInfo(_TEXT("Sum %ld MB"), (sPMCE.PrivateUsage + sPMCE.WorkingSetSize + sPMCE.QuotaPagedPoolUsage + sPMCE.QuotaNonPagedPoolUsage + sPMCE.PagefileUsage) / 1024 / 1024);
 	if (sPMCE.PrivateUsage / 1024 / 1024 >= sHeapLockerSettings.dwPrivateUsageMax)
 	{
+		// Application is using more than the configured max, display message box
 		if (sHeapLockerSettings.dwForceTermination)
+		{
 			_sntprintf_s(szOutput, countof(szOutput), _TRUNCATE, _TEXT("This document is probably malicious!\nClick OK to terminate this program (%s).\n\nTechnical details: heap-spray detected\nPrivateUsage %ld MB"), NULL2EmptyString(GetExecutableName()), sPMCE.PrivateUsage / 1024 / 1024);
+		}
 		else
+		{
 			_sntprintf_s(szOutput, countof(szOutput), _TRUNCATE, _TEXT("This document is probably malicious!\nDo you want to terminate this program (%s)?\n\nTechnical details: heap-spray detected\nPrivateUsage %ld MB"), NULL2EmptyString(GetExecutableName()), sPMCE.PrivateUsage / 1024 / 1024);
+		}
+
 		if (FALSE == ThreadedMessageBox(szOutput))
+		{
 			return FALSE;
+		}
 	}
 	return TRUE;
 }
 
+
+/******************************************************************************
+ * Thread to monitor private memory usage
+ ******************************************************************************/
 DWORD WINAPI MonitorPrivateUsage(LPVOID lpvArgument)
 {
 	while(CheckPrivateUsage())
+	{
 		Sleep(1000);
+	}
 
 	return 0;
 }
 
+
+/******************************************************************************
+ * Open application registry key
+ ******************************************************************************/
 HKEY GetApplicationRegKey(void)
 {
 	LPTSTR pszEXE;
@@ -634,6 +829,7 @@ HKEY GetApplicationRegKey(void)
 		PrintInfo(_TEXT("Application name: %s"), pszEXE);
 		if (IS_SUCCESS(RegOpenKeyEx(HKEY_LOCAL_MACHINE, REGISTRY_PATH_APPLICATIONS, 0L, KEY_READ, &hKey)))
 		{
+			// TODO SHOULD instead of enumerating the subkeys, just open the key, or return failure if it does not exist
 			dwIndex = 0;
 			dwKeyNameSize = countof(szKeyName);
 			while (ERROR_NO_MORE_ITEMS != RegEnumKeyEx(hKey, dwIndex++, szKeyName, &dwKeyNameSize, NULL, NULL, NULL, NULL))
@@ -661,6 +857,9 @@ HKEY GetApplicationRegKey(void)
 	return NULL;
 }
 
+/******************************************************************************
+ * Init array describing one-byte nop sleds
+ ******************************************************************************/
 void InitializeabNOPSledDetection(void)
 {
 	abNOPSledDetection[0x00] = FALSE;
@@ -921,6 +1120,10 @@ void InitializeabNOPSledDetection(void)
 	abNOPSledDetection[0xFF] = FALSE;
 }
 
+
+/******************************************************************************
+ * Search pages for nop sleds
+ ******************************************************************************/
 BOOL AnalyzeNewPagesForNOPSleds(void)
 {
 	HANDLE hProcess;
@@ -955,15 +1158,27 @@ BOOL AnalyzeNewPagesForNOPSleds(void)
 		for (lpMem = 0; lpMem < sSI.lpMaximumApplicationAddress; lpMem = (LPVOID)((DWORD)sMBI.BaseAddress + (DWORD)sMBI.RegionSize))
 		{
 			if (!VirtualQueryEx(hProcess, lpMem, &sMBI, sizeof(MEMORY_BASIC_INFORMATION)))
-				PrintError(_TEXT("VirtualQueryEx"));
+			{
+				PrintError(_TEXT("VirtualQueryEx failed"));
+			}
 			else
 			{
 				if (MEM_COMMIT == sMBI.State)
+				{
 					if (sMBI.Protect == PAGE_READWRITE || sMBI.Protect == PAGE_EXECUTE_READWRITE)
 					{
+						// Check if we've already scanned this page
 						for (iIter = 0; iIter < iPages && iIter < MAX_PAGES; iIter++)
+						{
 							if (sMBI.BaseAddress == alpvPages[iIter])
+							{
 								break;
+							}
+						}
+						// TODO SHOULD I don't like this function, as it appears to look for new pages, scan them once,
+						// and never scan them again, and also doesn't remove old unused pages from it's array alpvPages,
+						// so it could hit the MAX_PAGES before it should, and if it does hit that, then it should probably
+						// do something
 						if (iIter == iPages && iIter < MAX_PAGES)
 						{
 							alpvPages[iPages++] = sMBI.BaseAddress;
@@ -997,16 +1212,25 @@ BOOL AnalyzeNewPagesForNOPSleds(void)
 								{
 									PrintInfo(_TEXT(" Size of largest NOP-sled = %ld operation = 0x%02X start = 0x%08X"), stCountNOPMax, bOperationLargestSled, pbStartNOPSledMax);
 									if (sHeapLockerSettings.dwForceTermination)
+									{
 										_sntprintf_s(szOutput, countof(szOutput), _TRUNCATE, _TEXT("This document is probably malicious!\nClick OK to terminate this program (%s).\n\nTechnical details: NOP-sled detected\nlength = %ld\noperation = 0x%02X\nstart = 0x%08X"), NULL2EmptyString(GetExecutableName()), stCountNOPMax, bOperationLargestSled, pbStartNOPSledMax);
+									}
 									else
+									{
 										_sntprintf_s(szOutput, countof(szOutput), _TRUNCATE, _TEXT("This document is probably malicious!\nDo you want to terminate this program (%s)?\n\nTechnical details: NOP-sled detected\nlength = %ld\noperation = 0x%02X\nstart = 0x%08X"), NULL2EmptyString(GetExecutableName()), stCountNOPMax, bOperationLargestSled, pbStartNOPSledMax);
+									}
 									if (FALSE == ThreadedMessageBox(szOutput))
+									{
 										if (!sHeapLockerSettings.dwResumeMonitoring)
+										{
 											return FALSE;
+										}
+									}
 								}
 							}
 						}
 					}
+				}
 			}
 		}
 	}
@@ -1020,7 +1244,10 @@ BOOL AnalyzeNewPagesForNOPSleds(void)
 	return TRUE;
 }
 
-// Search algorithm: http://www-igm.univ-mlv.fr/~lecroq/string/node8.html#SECTION0080
+
+/******************************************************************************
+ * Search algorithm: http://www-igm.univ-mlv.fr/~lecroq/string/node8.html#SECTION0080
+ ******************************************************************************/
 void SearchKMPPreCompute(PBYTE pbSearchTerm, int iSearchTermSize, int aiKMPNext[]) {
 	int iIter1, iIter2;
 
@@ -1047,6 +1274,10 @@ void SearchKMPPreCompute(PBYTE pbSearchTerm, int iSearchTermSize, int aiKMPNext[
 	}
 }
 
+
+/******************************************************************************
+ * 
+ ******************************************************************************/
 PBYTE SearchPreviousNonWhiteSpaceCharacter(PBYTE pbStart, PBYTE pbLowerLimit, BYTE bCharacter)
 {
 	__try
@@ -1059,10 +1290,15 @@ PBYTE SearchPreviousNonWhiteSpaceCharacter(PBYTE pbStart, PBYTE pbLowerLimit, BY
 				pbStart -= 2;
 				continue;
 			}
+
 			if (*(pbStart + 1) == 0x00 && *pbStart == bCharacter)
+			{
 				return pbStart;
+			}
 			else
+			{
 				return NULL;
+			}
 		}
 	}
 	__except(1)
@@ -1073,6 +1309,10 @@ PBYTE SearchPreviousNonWhiteSpaceCharacter(PBYTE pbStart, PBYTE pbLowerLimit, BY
 	return NULL;
 }
 
+
+/******************************************************************************
+ * 
+ ******************************************************************************/
 PBYTE SearchNextNonWhiteSpaceCharacter(PBYTE pbStart, PBYTE pbUpperLimit, BYTE bCharacter)
 {
 	__try
@@ -1085,10 +1325,15 @@ PBYTE SearchNextNonWhiteSpaceCharacter(PBYTE pbStart, PBYTE pbUpperLimit, BYTE b
 				pbStart += 2;
 				continue;
 			}
+
 			if (*(pbStart + 1) == 0x00 && *pbStart == bCharacter)
+			{
 				return pbStart;
+			}
 			else
+			{
 				return NULL;
+			}
 		}
 	}
 	__except(1)
@@ -1099,6 +1344,10 @@ PBYTE SearchNextNonWhiteSpaceCharacter(PBYTE pbStart, PBYTE pbUpperLimit, BYTE b
 	return NULL;
 }
 
+
+/******************************************************************************
+ * Search memory for given string
+ ******************************************************************************/
 PBYTE SearchFunctionKMP(PBYTE pbSearchTerm, int iSearchTermSize, PBYTE pbMemory, SIZE_T iMemorySize, int iMode)
 {
 	int iIter1;
@@ -1115,19 +1364,27 @@ PBYTE SearchFunctionKMP(PBYTE pbSearchTerm, int iSearchTermSize, PBYTE pbMemory,
 		while (iIter2 < iMemorySize)
 		{
 			while (iIter1 > -1 && pbSearchTerm[iIter1] != pbMemory[iIter2])
+			{
 				iIter1 = aiKMPNext[iIter1];
+			}
 			iIter1++;
 			iIter2++;
 			if (iIter1 >= iSearchTermSize)
 			{
 				if (0 == iMode)
+				{
 					return pbMemory + iIter2 - iIter1;
+				}
 				pbFound = SearchPreviousNonWhiteSpaceCharacter(pbMemory + iIter2 - iIter1, pbMemory, '=');
 				if (NULL != pbFound)
+				{
 					return pbFound;
+				}
 				pbFound = SearchNextNonWhiteSpaceCharacter(pbMemory + iIter2 - 2, pbMemory + iMemorySize - 1, '(');
 				if (NULL != pbFound)
+				{
 					return pbMemory + iIter2 - iIter1;
+				}
 				iIter1 = aiKMPNext[iIter1];
 			}
 		}
@@ -1140,6 +1397,10 @@ PBYTE SearchFunctionKMP(PBYTE pbSearchTerm, int iSearchTermSize, PBYTE pbMemory,
 	return NULL;
 }
 
+
+/******************************************************************************
+ * 
+ ******************************************************************************/
 BOOL AnalyzeNewPagesToSearchThem(void)
 {
 	HANDLE hProcess;
@@ -1168,20 +1429,30 @@ BOOL AnalyzeNewPagesToSearchThem(void)
 		for (lpMem = 0; lpMem < sSI.lpMaximumApplicationAddress; lpMem = (LPVOID)((DWORD)sMBI.BaseAddress + (DWORD)sMBI.RegionSize))
 		{
 			if (!VirtualQueryEx(hProcess, lpMem, &sMBI, sizeof(MEMORY_BASIC_INFORMATION)))
+			{
 				PrintError(_TEXT("VirtualQueryEx"));
+			}
 			else
 			{
 				if (MEM_COMMIT == sMBI.State)
+				{
 					if (sMBI.Protect == PAGE_READWRITE || sMBI.Protect == PAGE_EXECUTE_READWRITE)
 					{
 						for (iIter = 0; iIter < iPages && iIter < MAX_PAGES; iIter++)
+						{
 							if (sMBI.BaseAddress == alpvPages[iIter])
+							{
 								break;
+							}
+						}
+
 						if (iIter == iPages && iIter < MAX_PAGES)
 						{
 							alpvPages[iPages++] = sMBI.BaseAddress;
 							if (sHeapLockerSettings.dwVerbose > 0)
+							{
 								PrintInfo(_TEXT("Keyword analysis page 0x%08x protection = 0x%04x size = 0x%04x"), sMBI.BaseAddress, sMBI.Protect, sMBI.RegionSize);
+							}
 							if (!bFirstRun)
 							{
 								pbFound = SearchFunctionKMP(sHeapLockerSettings.abSearch, sHeapLockerSettings.iSearchLen, (PBYTE)sMBI.BaseAddress, sMBI.RegionSize, sHeapLockerSettings.iSearchMode);
@@ -1189,16 +1460,26 @@ BOOL AnalyzeNewPagesToSearchThem(void)
 								{
 									PrintInfo(_TEXT(" Found string at 0x%08X"), pbFound);
 									if (sHeapLockerSettings.dwForceTermination)
+									{
 										_sntprintf_s(szOutput, countof(szOutput), _TRUNCATE, _TEXT("This document is probably malicious!\nClick OK to terminate this program (%s).\n\nTechnical details: string detected\nstart = 0x%08X\nstring = %s"), NULL2EmptyString(GetExecutableName()), pbFound, NULL2EmptyString(HexDump(pbFound, 50)));
+									}
 									else
+									{
 										_sntprintf_s(szOutput, countof(szOutput), _TRUNCATE, _TEXT("This document is probably malicious!\nDo you want to terminate this program (%s)?\n\nTechnical details: string detected\nstart = 0x%08X\nstring = %s"), NULL2EmptyString(GetExecutableName()), pbFound, NULL2EmptyString(HexDump(pbFound, 50)));
+									}
+
 									if (FALSE == ThreadedMessageBox(szOutput))
+									{
 										if (!sHeapLockerSettings.dwResumeMonitoring)
+										{
 											return FALSE;
+										}
+									}
 								}
 							}
 						}
 					}
+				}
 			}
 		}
 	}
@@ -1213,19 +1494,28 @@ BOOL AnalyzeNewPagesToSearchThem(void)
 }
 
 
+/******************************************************************************
+ * Thread to scan new memory for nop sleds
+ ******************************************************************************/
 DWORD WINAPI MonitorNewPagesToSearchThem(LPVOID lpvArgument)
 {
 	InitializeabNOPSledDetection();
 	while(AnalyzeNewPagesToSearchThem())
+	{
 		Sleep(1000);
+	}
 
 	return 0;
 }
 
 
-// http://www.ivanlef0u.tuxfamily.org/?p=355
+/******************************************************************************
+ * Allocate page 0 (NULL), to protect against possible problems
+ ******************************************************************************/
 void PreallocatePage0(void)
 {
+	// Based on http://www.ivanlef0u.tuxfamily.org/?p=355
+
 	HMODULE hNTDLL;
 	NTALLOCATEVIRTUALMEMORY NtAllocateVirtualMemory;
 	SIZE_T stRegionSize;
@@ -1245,7 +1535,9 @@ void PreallocatePage0(void)
 		if (NULL == NtAllocateVirtualMemory)
 		{
 			if (sHeapLockerSettings.dwVerbose > 0)
-				PrintError(_TEXT("GetProcAddress"));
+			{
+				PrintError(_TEXT("GetProcAddress failed"));
+			}
 			return;
 		}
 		else
@@ -1254,14 +1546,24 @@ void PreallocatePage0(void)
 			stRegionSize = 0x1000;
 			dwResult = NtAllocateVirtualMemory(GetCurrentProcess(), &pvBaseAddress, 0L, &stRegionSize, MEM_COMMIT | MEM_RESERVE, PAGE_NOACCESS);
 			if (sHeapLockerSettings.dwVerbose > 0)
+			{
 				if (0 == dwResult)
+				{
 					PrintInfo(_TEXT("NULL page address = %08x memory size = %ld"), pvBaseAddress, stRegionSize);
+				}
 				else
+				{
 					PrintInfo(_TEXT("NtAllocateVirtualMemory failed, return code = %ld"), dwResult);
+				}
+			}
 		}
 	}
 }
 
+
+/******************************************************************************
+ * 
+ ******************************************************************************/
 DWORD WINAPI HeapLocker(LPVOID lpvArgument)
 {
 	HKEY hKeyApplication;
@@ -1273,7 +1575,9 @@ DWORD WINAPI HeapLocker(LPVOID lpvArgument)
 	hKeyApplication = GetApplicationRegKey();
 
 	if (NULL != hKeyApplication)
+	{
 		ReadHeapLockerSettingsFromRegistryApplication(hKeyApplication);
+	}
 
 	ReadHeapLockerSettingsFromRegistry();
 
@@ -1290,22 +1594,37 @@ DWORD WINAPI HeapLocker(LPVOID lpvArgument)
 
 	ProtectAddresses(hKeyApplication);
 	if (NULL != hKeyApplication)
+	{
 		RegCloseKey(hKeyApplication);
+	}
 
 	if (sHeapLockerSettings.dwPreallocatePage0 > 0)
+	{
 		PreallocatePage0();
+	}
 
 	if (sHeapLockerSettings.dwNOPSledLengthMin > 0)
+	{
 		CreateThread(NULL, 0, MonitorNewPagesForNOPSleds, NULL, 0, NULL);
+	}
 
 	if (0xFFFFFFFF != sHeapLockerSettings.dwPrivateUsageMax)
+	{
 		CreateThread(NULL, 0, MonitorPrivateUsage, NULL, 0, NULL);
+	}
 
 	if (sHeapLockerSettings.iSearchLen > 0)
+	{
 		CreateThread(NULL, 0, MonitorNewPagesToSearchThem, NULL, 0, NULL);
+	}
+
 	return 0;
 }
 
+
+/******************************************************************************
+ * 
+ ******************************************************************************/
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  dwReason,
                        LPVOID lpReserved
