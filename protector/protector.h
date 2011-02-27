@@ -53,7 +53,7 @@
 #define REGISTRY_FORCE_TERMINATION				_TEXT("ForceTermination")
 #define REGISTRY_RESUME_MONITORING				_TEXT("ResumeMonitoring")
 
-#define MESSAGEBOX_TITLE						_TEXT("HeapLocker")
+#define MESSAGEBOX_TITLE						_TEXT("OpenHIPS HeapLocker")
 
 #define MAX_PAGES 4096
 
@@ -100,33 +100,37 @@ typedef struct {
 
 typedef DWORD (WINAPI *NTALLOCATEVIRTUALMEMORY)(HANDLE, PVOID *, ULONG_PTR, PSIZE_T, ULONG, ULONG);
 
+extern HEAPLOCKER_SETTINGS sHeapLockerSettings;
+extern BYTE abHeapLockerShellcode[35];
+
 ///////////////////////////////////////////////////////////////////////////////
 // Prototypes
-
+// dllmain.cpp
 LPTSTR NULL2EmptyString(LPTSTR pszString);
 LPTSTR GetExecutableName(void);
 LPTSTR HexDump(PBYTE pbFound, int iSize);
-void SuspendThreadsOfCurrentProcessExceptCurrentThread(BOOL bSuspend);
-DWORD WINAPI DisplayMessageBox(LPVOID lpvArgument);
-BOOL ThreadedMessageBox(LPTSTR pszOutput);
-DWORD WINAPI EntryPoint(LPVOID lpvArgument);
-PBYTE ShellCodeToEntryPoint(void);
-SIZE_T PreallocateAddress(DWORD dwAddress, int iMode);
-void ProtectAddresses(HKEY hKeyApplication);
+DWORD WINAPI HeapLocker(LPVOID lpvArgument);
+
+// monitorMemUsage.cpp
+DWORD WINAPI MonitorPrivateUsage(LPVOID lpvArgument);
+
+// detectNopSleds.cpp
+void InitializeabNOPSledDetection(void);
+DWORD WINAPI MonitorNewPagesForNOPSleds(LPVOID lpvArgument);
+
+// searchForStrings.cpp
+DWORD WINAPI MonitorNewPagesToSearchThem(LPVOID lpvArgument);
+
+// getSettings.cpp
 void ReadHeapLockerSettingsFromRegistryApplication(HKEY hKeyApplication);
 void ReadHeapLockerSettingsFromRegistry(void);
 void SetHeapLockerSettingsDefaults(void);
-BOOL CheckPrivateUsage(void);
-DWORD WINAPI MonitorPrivateUsage(LPVOID lpvArgument);
 HKEY GetApplicationRegKey(void);
-void InitializeabNOPSledDetection(void);
-BOOL AnalyzeNewPagesForNOPSleds(void);
-DWORD WINAPI MonitorNewPagesForNOPSleds(LPVOID lpvArgument);
-void SearchKMPPreCompute(PBYTE pbSearchTerm, int iSearchTermSize, int aiKMPNext[]);
-PBYTE SearchPreviousNonWhiteSpaceCharacter(PBYTE pbStart, PBYTE pbLowerLimit, BYTE bCharacter);
-PBYTE SearchNextNonWhiteSpaceCharacter(PBYTE pbStart, PBYTE pbUpperLimit, BYTE bCharacter);
-PBYTE SearchFunctionKMP(PBYTE pbSearchTerm, int iSearchTermSize, PBYTE pbMemory, SIZE_T iMemorySize, int iMode);
-BOOL AnalyzeNewPagesToSearchThem(void);
-DWORD WINAPI MonitorNewPagesToSearchThem(LPVOID lpvArgument);
+
+// ui.cpp
+BOOL ThreadedMessageBox(LPTSTR pszOutput);
+PBYTE ShellCodeToEntryPoint(void);
+
+// protectMemory.cpp
+void ProtectAddresses(HKEY hKeyApplication);
 void PreallocatePage0(void);
-DWORD WINAPI HeapLocker(LPVOID lpvArgument);

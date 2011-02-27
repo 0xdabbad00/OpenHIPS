@@ -69,7 +69,12 @@
   <ItemGroup>
     <ClCompile Include="..\common\debug.cpp" />
     <ClCompile Include="dllmain.cpp" />
-    <ClCompile Include="nopSledDetection.cpp" />
+    <ClCompile Include="getSettings.cpp" />
+    <ClCompile Include="monitorMemUsage.cpp" />
+    <ClCompile Include="detectNopSleds.cpp" />
+    <ClCompile Include="protectMemory.cpp" />
+    <ClCompile Include="searchForStrings.cpp" />
+    <ClCompile Include="ui.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="protector.rc" />
