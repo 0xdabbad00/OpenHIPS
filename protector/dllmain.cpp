@@ -23,78 +23,69 @@
  */
 
 #include "common.h"
-
-#include <windows.h>
-#include <stdio.h>
-#include <tlhelp32.h>
-#include <tchar.h>
-#include <psapi.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-
+#include "protector.h"
 
 #pragma comment(lib, "psapi.lib")
 
-#define countof(array) (sizeof(array)/sizeof(array[0]))
-#define IS_SUCCESS(x) (ERROR_SUCCESS == (x))
-#define FUNCTION_FAILED(x) (!(x))
-
-#define MAX_REGISTRY_KEY_NAME		255
-#define MAX_REGISTRY_VALUE_NAME	16383
-
-#define REGISTRY_PATH							_TEXT("Software\\OpenHIPS\\HeapLocker")
-#define REGISTRY_ADDRESSES						_TEXT("Addresses")
-#define REGISTRY_PATH_APPLICATIONS				_TEXT("Software\\OpenHIPS\\HeapLocker\\Applications")
-#define REGISTRY_PRIVATE_USAGE_MAX				_TEXT("PrivateUsageMax")
-#define REGISTRY_NOP_SLED_LENGTH_MAX			_TEXT("NOPSledLengthMin")
-#define REGISTRY_GENERIC_PRE_ALLOCATE			_TEXT("GenericPreAllocate")
-#define REGISTRY_VERBOSE						_TEXT("Verbose")
-#define REGISTRY_SEARCH_STRING					_TEXT("SearchString")
-#define REGISTRY_SEARCH_MODE					_TEXT("SearchMode")
-#define REGISTRY_NULL_PAGE_PRE_ALLOCATE			_TEXT("NullPagePreallocate")
-#define REGISTRY_FORCE_TERMINATION				_TEXT("ForceTermination")
-#define REGISTRY_RESUME_MONITORING				_TEXT("ResumeMonitoring")
-
-#define MESSAGEBOX_TITLE						_TEXT("HeapLocker")
-
-#define MAX_PAGES 4096
-
-#define NOP 0x90
-
-#define ADDRESS_MODE_NOACCESS	0
-#define ADDRESS_MODE_SHELLCODE	1
-
-#define OUTPUTDEBUGSTRING
-
-#define ORIGIN_NONE						0
-#define ORIGIN_DEFAULT					1
-#define ORIGIN_REGISTRY_GENERIC			2
-#define ORIGIN_REGISTRY_APPLICATION		3
-
-typedef struct {
-	DWORD dwPrivateUsageMax;
-	int iOrigin_dwPrivateUsageMax;
-	DWORD dwNOPSledLengthMin;
-	int iOrigin_dwNOPSledLengthMin;
-	DWORD dwGenericPreAllocate;
-	int iOrigin_dwGenericPreAllocate;
-	DWORD dwVerbose;
-	int iOrigin_dwVerbose;
-	BYTE abSearch[1024];
-	int iSearchLen;
-	int iOrigin_iSearchLen;
-	int iSearchMode;
-	int iOrigin_iSearchMode;
-	DWORD dwPreallocatePage0;
-	int iOrigin_dwPreallocatePage0;
-	DWORD dwForceTermination;
-	int iOrigin_dwForceTermination;
-	DWORD dwResumeMonitoring;
-	int iOrigin_dwResumeMonitoring;
-} HEAPLOCKER_SETTINGS;
-
 HEAPLOCKER_SETTINGS sHeapLockerSettings;
+
+BYTE abHeapLockerShellcode[] = {
+	0x59,														// pop ecx
+	0x33, 0xC0,											// xor eax, eax
+	0x50,														// push eax
+	0x50,														// push eax
+	0x51,														// push ecx
+	0x68, 0x67, 0x45, 0x23, 0x01,		// push 0x01234567     ; address of EntryPoint
+	0x50,														// push eax
+	0x50,														// push eax
+	0xB8, 0xEF, 0xCD, 0xAB, 0x89,		// mov eax, 0x89ABCDEF ; CreateThread
+	0xFF, 0xD0,											// call eax
+	0xB8, 0x67, 0x45, 0x23, 0x01,		// mov eax, 0x01234567 ; GetCurrentThread
+	0xFF, 0xD0,											// call eax
+	0x50,														// push eax
+	0xB8, 0x67, 0x45, 0x23, 0x01,		// mov eax, 0x01234567 ; SuspendThread
+	0xFF, 0xD0											// call eax
+};
+
+BYTE abNOPs[] = {
+	0x27, // daa
+	0x2F, // das
+	0x37, // aaa
+	0x3F, // aas
+	0x40, // inc eax
+	0x41, // inc ecx
+	0x42, // inc edx
+	0x43, // inc ebx
+	0x45, // inc ebp
+	0x46, // inc esi
+	0x47, // inc edi
+	0x48, // dec eax
+	0x49, // dec ecx
+	0x4A, // dec edx
+	0x4B, // dec ebx
+	0x4D, // dec ebp
+	0x4E, // dec esi
+	0x4F, // dec edi
+	0x90, // nop
+	0x91, // xchg    eax, ecx
+	0x92, // xchg    eax, edx
+	0x93, // xchg    eax, ebx
+	0x95, // xchg    eax, ebp
+	0x96, // xchg    eax, esi
+	0x97, // xchg    eax, edi
+	0x98, // cwde
+	0x99, // cdq
+	0x9E, // sahf
+	0x9F, // lahf
+	0xD6, // setalc
+	0xF5, // cmc
+	0xF8, // clc
+	0xF9, // stc
+	0xFC, // cld
+	0xFD, // std
+};
+
+BYTE abNOPSledDetection[256];
 
 LPTSTR NULL2EmptyString(LPTSTR pszString)
 {
@@ -223,67 +214,6 @@ BOOL ThreadedMessageBox(LPTSTR pszOutput)
 	SuspendThreadsOfCurrentProcessExceptCurrentThread(FALSE);
 	return FALSE;
 }
-
-#define INDEX_ENTRYPOINT				 7
-#define INDEX_CREATETHREAD			14
-#define INDEX_GETCURRENTTHREAD	21
-#define INDEX_SUSPENDTHREAD			29
-
-BYTE abHeapLockerShellcode[] = {
-	0x59,														// pop ecx
-	0x33, 0xC0,											// xor eax, eax
-	0x50,														// push eax
-	0x50,														// push eax
-	0x51,														// push ecx
-	0x68, 0x67, 0x45, 0x23, 0x01,		// push 0x01234567     ; address of EntryPoint
-	0x50,														// push eax
-	0x50,														// push eax
-	0xB8, 0xEF, 0xCD, 0xAB, 0x89,		// mov eax, 0x89ABCDEF ; CreateThread
-	0xFF, 0xD0,											// call eax
-	0xB8, 0x67, 0x45, 0x23, 0x01,		// mov eax, 0x01234567 ; GetCurrentThread
-	0xFF, 0xD0,											// call eax
-	0x50,														// push eax
-	0xB8, 0x67, 0x45, 0x23, 0x01,		// mov eax, 0x01234567 ; SuspendThread
-	0xFF, 0xD0											// call eax
-};
-
-BYTE abNOPs[] = {
-	0x27, // daa
-	0x2F, // das
-	0x37, // aaa
-	0x3F, // aas
-	0x40, // inc eax
-	0x41, // inc ecx
-	0x42, // inc edx
-	0x43, // inc ebx
-	0x45, // inc ebp
-	0x46, // inc esi
-	0x47, // inc edi
-	0x48, // dec eax
-	0x49, // dec ecx
-	0x4A, // dec edx
-	0x4B, // dec ebx
-	0x4D, // dec ebp
-	0x4E, // dec esi
-	0x4F, // dec edi
-	0x90, // nop
-	0x91, // xchg    eax, ecx
-	0x92, // xchg    eax, edx
-	0x93, // xchg    eax, ebx
-	0x95, // xchg    eax, ebp
-	0x96, // xchg    eax, esi
-	0x97, // xchg    eax, edi
-	0x98, // cwde
-	0x99, // cdq
-	0x9E, // sahf
-	0x9F, // lahf
-	0xD6, // setalc
-	0xF5, // cmc
-	0xF8, // clc
-	0xF9, // stc
-	0xFC, // cld
-	0xFD, // std
-};
 
 DWORD WINAPI EntryPoint(LPVOID lpvArgument)
 {
@@ -731,8 +661,6 @@ HKEY GetApplicationRegKey(void)
 	return NULL;
 }
 
-BYTE abNOPSledDetection[256];
-
 void InitializeabNOPSledDetection(void)
 {
 	abNOPSledDetection[0x00] = FALSE;
@@ -1092,17 +1020,6 @@ BOOL AnalyzeNewPagesForNOPSleds(void)
 	return TRUE;
 }
 
-DWORD WINAPI MonitorNewPagesForNOPSleds(LPVOID lpvArgument)
-{
-	InitializeabNOPSledDetection();
-	while(AnalyzeNewPagesForNOPSleds())
-		Sleep(1000);
-
-	return 0;
-}
-
-#define XSIZE 1024
-
 // Search algorithm: http://www-igm.univ-mlv.fr/~lecroq/string/node8.html#SECTION0080
 void SearchKMPPreCompute(PBYTE pbSearchTerm, int iSearchTermSize, int aiKMPNext[]) {
 	int iIter1, iIter2;
@@ -1306,8 +1223,6 @@ DWORD WINAPI MonitorNewPagesToSearchThem(LPVOID lpvArgument)
 }
 
 
-typedef DWORD (WINAPI *NTALLOCATEVIRTUALMEMORY)(HANDLE, PVOID *, ULONG_PTR, PSIZE_T, ULONG, ULONG);
-
 // http://www.ivanlef0u.tuxfamily.org/?p=355
 void PreallocatePage0(void)
 {
@@ -1389,10 +1304,6 @@ DWORD WINAPI HeapLocker(LPVOID lpvArgument)
 	if (sHeapLockerSettings.iSearchLen > 0)
 		CreateThread(NULL, 0, MonitorNewPagesToSearchThem, NULL, 0, NULL);
 	return 0;
-}
-
-__declspec(dllexport) void Dummy(void)
-{
 }
 
 BOOL APIENTRY DllMain( HMODULE hModule,

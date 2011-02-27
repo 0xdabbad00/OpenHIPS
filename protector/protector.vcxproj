@@ -69,9 +69,13 @@
   <ItemGroup>
     <ClCompile Include="..\common\debug.cpp" />
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="nopSledDetection.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="protector.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="protector.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
