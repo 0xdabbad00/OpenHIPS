@@ -5,6 +5,9 @@ using System.Text;
 using System.Diagnostics;
 using System.ServiceProcess;
 using System.Threading;
+using System.IO;
+using Microsoft.Win32;
+using System.Reflection;
 
 // TODO MUST Remove DEBUG from project settings
 
@@ -16,6 +19,8 @@ namespace ohipssvc
     {
         public static Boolean running = true;
         public static OhipsMonitor ohipsMonitor = null;
+        private static string szUiProcess = "ohipsui.exe";
+        private static Process uiProcess = null;
 
         public WindowsService()
         {
@@ -35,13 +40,10 @@ namespace ohipssvc
 
         static void Main()
         {
-            Debug.WriteLine("Running WindowsService.Main v1");
+            Debug.WriteLine("Running WindowsService.Main");
+            Debug.WriteLine(Directory.GetCurrentDirectory());
 
-            /*
-            Process ui = new Process();
-            ui.StartInfo.FileName = "ohipsui.exe";
-            ui.Start();
-             */
+            RunUI();
 
             if (ohipsMonitor == null)
             {
@@ -59,6 +61,23 @@ namespace ohipssvc
 
             // Start service
             ServiceBase.Run(new WindowsService());
+        }
+
+        /// <summary>
+        /// Runs the UI (User Interface)
+        /// </summary>
+        private static void RunUI()
+        {
+            String filepath = Assembly.GetExecutingAssembly().Location;
+            // Get the name of the dll
+            String uipath = Path.GetDirectoryName(filepath) + "\\" + szUiProcess;
+
+            if (uiProcess == null || uiProcess.HasExited)
+            {
+                uiProcess = new Process();
+                uiProcess.StartInfo.FileName = uipath;
+                uiProcess.Start();
+            }
         }
 
         /// <summary>
@@ -80,6 +99,10 @@ namespace ohipssvc
             System.Diagnostics.Debug.WriteLine("OpenHIPS Stop");
             running = false;
             OhipsMonitor.Uninstall();
+            if (uiProcess != null)
+            {
+                uiProcess.Kill();
+            }
             base.OnStop();
         }
 
