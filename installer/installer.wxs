@@ -41,7 +41,7 @@
 							ErrorControl="normal"
 							Description="Protects against intrusions"
 							Account="LocalSystem"
-							Interactive="no"
+							Interactive="yes"
 							/>
 			<ServiceControl Id="StartOpenHIPS"
 							Name="OpenHIPS" Start="install" Wait="no" />
