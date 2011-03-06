@@ -27,7 +27,7 @@ namespace ohipsui
             this.AlarmNotifyIcon.BalloonTipText = "This is your requested alarm!";
             this.AlarmNotifyIcon.BalloonTipTitle = "Alarm";
             //this.AlarmNotifyIcon.ContextMenuStrip = this.TrayContextMenuStrip;
-            this.AlarmNotifyIcon.Icon = ((System.Drawing.Icon)(resources.GetObject("icon.ico")));
+            this.AlarmNotifyIcon.Icon = ((System.Drawing.Icon)(resources.GetObject("taskbar.ico")));
             this.AlarmNotifyIcon.Text = "Alarm Clock";
             this.AlarmNotifyIcon.Visible = true;
 
