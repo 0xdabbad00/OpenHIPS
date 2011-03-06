@@ -32,10 +32,6 @@
 
 HEAPLOCKER_SETTINGS sHeapLockerSettings;
 
-
-
-
-
 static TCHAR szModuleName[MAX_PATH];
 static TCHAR szDump[256];
 
@@ -52,7 +48,7 @@ LPTSTR NULL2EmptyString(LPTSTR pszString)
 
 
 /******************************************************************************
- * @return An empty string if pszString is NULL
+ * @return The filename of the executable
  ******************************************************************************/
 LPTSTR GetExecutableName(void)
 {

@@ -19,6 +19,7 @@
 #include <stdarg.h>
 #include <varargs.h>
 #include <stdio.h>
+#include <tchar.h>
 
 void PrintMessage(char *file, int lineno, int errorLvl, char *fmt, ...)
 {
@@ -33,8 +34,8 @@ void PrintMessage(char *file, int lineno, int errorLvl, char *fmt, ...)
 	vsprintf_s(str, sizeof(str), fmt, args);
 	va_end(args);
 	// TODO MUST, On error, need to call GetLastError and print error message
-	_snprintf_s(output, sizeof(output), _TRUNCATE, "%s[%s:%d] %s", 
-		(errorLvl == ERROR_LEVEL) ? "ERROR " : "", 
+	_sntprintf_s(output, sizeof(output), _TRUNCATE, _TEXT("%s[%s:%d] %s"), 
+		(errorLvl == ERROR_LEVEL) ? _TEXT("ERROR ") : _TEXT(""), 
 		file, lineno, str);
 
 #ifdef _DEBUG
@@ -57,7 +58,7 @@ void PrintMessage(char *file, int lineno, int errorLvl, char *fmt, ...)
         (LPTSTR) &lpMsgBuf,
         0, NULL );
 
-		_snprintf_s(output, sizeof(output), _TRUNCATE, "Last Error (%d): %s", dwError, lpMsgBuf);
+		_sntprintf_s(output, sizeof(output), _TRUNCATE, _TEXT("Last Error (%d): %s"), dwError, lpMsgBuf);
 #ifdef _DEBUG
 		OutputDebugString(output);
 #endif

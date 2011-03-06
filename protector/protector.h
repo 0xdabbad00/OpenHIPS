@@ -38,7 +38,7 @@
 #define FUNCTION_FAILED(x) (!(x))
 
 #define MAX_REGISTRY_KEY_NAME		255
-#define MAX_REGISTRY_VALUE_NAME	16383
+#define MAX_REGISTRY_VALUE_NAME		255
 
 #define REGISTRY_PATH							_TEXT("Software\\OpenHIPS\\HeapLocker")
 #define REGISTRY_ADDRESSES						_TEXT("Addresses")
