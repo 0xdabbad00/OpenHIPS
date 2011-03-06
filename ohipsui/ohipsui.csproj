@@ -19,7 +19,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
+    <OutputPath>..\bin\$(Configuration)\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -28,14 +28,13 @@
     <PlatformTarget>x86</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
+    <OutputPath>..\bin\$(Configuration)\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup>
-    <ApplicationIcon>
-    </ApplicationIcon>
+    <ApplicationIcon>..\images\icon.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -71,15 +70,7 @@
       <LastGenOutput>TrayIcon.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <None Include="Properties\Settings.settings">
-      <Generator>SettingsSingleFileGenerator</Generator>
-      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
-    </None>
-    <Compile Include="Properties\Settings.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Settings.settings</DependentUpon>
-      <DesignTimeSharedInput>True</DesignTimeSharedInput>
-    </Compile>
+	
   </ItemGroup>
   <ItemGroup>
     <Resource Include="..\images\icon.ico" />

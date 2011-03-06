@@ -37,9 +37,11 @@ namespace ohipssvc
         {
             Debug.WriteLine("Running WindowsService.Main v1");
 
+            /*
             Process ui = new Process();
             ui.StartInfo.FileName = "ohipsui.exe";
             ui.Start();
+             */
 
             if (ohipsMonitor == null)
             {
