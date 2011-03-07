@@ -9,9 +9,6 @@ using System.IO;
 using Microsoft.Win32;
 using System.Reflection;
 
-// TODO MUST Remove DEBUG from project settings
-
-
 namespace ohipssvc
 {
     [System.ComponentModel.DesignerCategory("")]
