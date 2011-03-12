@@ -125,24 +125,30 @@ namespace ohipsui
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(TrayIcon));
             this.CloseBtn = new System.Windows.Forms.Button();
             this.SuspendLayout();
+
+            int formWidth = 500;
+            int formHeight = 300;
+
             // 
             // CloseBtn
             // 
-            this.CloseBtn.Location = new System.Drawing.Point(157, 238);
-            this.CloseBtn.Name = "Close";
             this.CloseBtn.Size = new System.Drawing.Size(75, 23);
+            this.CloseBtn.Location = new System.Drawing.Point(formWidth - this.CloseBtn.Size.Width - 15, formHeight - this.CloseBtn.Size.Height - 15);
+            this.CloseBtn.Name = "Close";
             this.CloseBtn.TabIndex = 0;
             this.CloseBtn.Text = "Close";
             this.CloseBtn.UseVisualStyleBackColor = true;
             this.CloseBtn.Click += new System.EventHandler(this.CloseBtn_Click);
+
+
             // 
             // TrayIcon Settings Form
             // 
-            this.ClientSize = new System.Drawing.Size(292, 273);
+            this.ClientSize = new System.Drawing.Size(formWidth, formHeight);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("icon.ico")));
             this.ControlBox = false;
             this.Controls.Add(this.CloseBtn);
-            this.MinimumSize = new System.Drawing.Size(100, 100);
+            this.MinimumSize = new System.Drawing.Size(500, 300);
             this.Name = "TrayIcon";
             this.Text = "OpenHIPS Settings";
             this.WindowState = System.Windows.Forms.FormWindowState.Minimized;
