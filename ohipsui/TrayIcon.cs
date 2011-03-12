@@ -13,15 +13,14 @@ namespace ohipsui
         private System.Windows.Forms.NotifyIcon TrayNotifyIcon;
         private System.Windows.Forms.ContextMenuStrip TrayContextMenuStrip;
         private System.Windows.Forms.Button BtnClose;
+        private System.Windows.Forms.Button BtnSaveClose;
         private System.Windows.Forms.Label LblProcessSelection;
         private System.Windows.Forms.ListBox ListBoxProcessSelector;
         private System.Windows.Forms.Label LblMemMax;
         private System.Windows.Forms.TextBox TextBoxMemMax;
         private System.Windows.Forms.Label LblNopSledMin;
         private System.Windows.Forms.TextBox TextBoxNopSledMin;
-        private System.Windows.Forms.Label LblNullPrealloc;
         private System.Windows.Forms.CheckBox ChkBoxNullPrealloc;
-        private System.Windows.Forms.Label LblGenericPrealloc;
         private System.Windows.Forms.CheckBox ChkBoxGenericPrealloc;
         private System.Windows.Forms.ToolStripMenuItem SettingsToolStripMenuItem;
 
@@ -133,7 +132,6 @@ namespace ohipsui
         private void InitializeComponent()
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(TrayIcon));
-            this.BtnClose = new System.Windows.Forms.Button();
             this.SuspendLayout();
 
             int formWidth = 500;
@@ -141,12 +139,24 @@ namespace ohipsui
             int margin = 15;
 
             // 
-            // CloseBtn
+            // BtnClose
             //
-            this.BtnClose.Text = "Close";
+            this.BtnClose = new System.Windows.Forms.Button();
+            this.BtnClose.Text = "Close without saving";
+            this.BtnClose.Width = 150;
             this.BtnClose.Location = new System.Drawing.Point(formWidth - this.BtnClose.Size.Width - margin, formHeight - this.BtnClose.Size.Height * 2 - margin);
             this.BtnClose.TabIndex = 0;
             this.BtnClose.Click += new System.EventHandler(this.CloseBtn_Click);
+
+            // 
+            // BtnSaveClose
+            //
+            this.BtnSaveClose = new System.Windows.Forms.Button();
+            this.BtnSaveClose.Text = "Save";
+            this.BtnSaveClose.Width = 150;
+            this.BtnSaveClose.Location = new System.Drawing.Point(this.BtnClose.Location.X, this.BtnClose.Location.Y - this.BtnSaveClose.Height);
+            this.BtnSaveClose.TabIndex = 0;
+            this.BtnSaveClose.Click += new System.EventHandler(this.SaveCloseBtn_Click);
 
             //
             // Process selector
@@ -154,12 +164,14 @@ namespace ohipsui
             this.LblProcessSelection = new System.Windows.Forms.Label();
             this.LblProcessSelection.Text = "Process name";
             this.LblProcessSelection.Location = new System.Drawing.Point(margin, margin);
+            this.LblProcessSelection.TextAlign = ContentAlignment.BottomLeft;
 
             
             this.ListBoxProcessSelector = new System.Windows.Forms.ListBox();
             this.ListBoxProcessSelector.Text = "Process names";
             this.ListBoxProcessSelector.Location = new System.Drawing.Point(margin, this.LblProcessSelection.Location.Y + this.LblProcessSelection.Size.Height);
             this.ListBoxProcessSelector.ScrollAlwaysVisible = true;
+            this.ListBoxProcessSelector.Height = 200;
             ListBoxProcessSelector.BeginUpdate();
             // Loop through and add 50 items to the ListBox.
             for (int x = 1; x <= 5; x++)
@@ -177,6 +189,7 @@ namespace ohipsui
             this.LblMemMax = new System.Windows.Forms.Label();
             this.LblMemMax.Text = "Memory max";
             this.LblMemMax.Location = new System.Drawing.Point(col2, margin);
+            this.LblMemMax.TextAlign = ContentAlignment.BottomLeft;
 
             this.TextBoxMemMax = new System.Windows.Forms.TextBox();
             this.TextBoxMemMax.Text = "100";
@@ -187,7 +200,9 @@ namespace ohipsui
             //
             this.LblNopSledMin = new System.Windows.Forms.Label();
             this.LblNopSledMin.Text = "Nop sled minimum length";
-            this.LblNopSledMin.Location = new System.Drawing.Point(col2, TextBoxMemMax.Location.Y + TextBoxMemMax.Height+margin);
+            this.LblNopSledMin.Location = new System.Drawing.Point(col2, TextBoxMemMax.Location.Y + TextBoxMemMax.Height);
+            this.LblNopSledMin.TextAlign = ContentAlignment.BottomLeft;
+            this.LblNopSledMin.Width = 200;
 
             this.TextBoxNopSledMin = new System.Windows.Forms.TextBox();
             this.TextBoxNopSledMin.Text = "100";
@@ -198,21 +213,16 @@ namespace ohipsui
             //
             this.ChkBoxNullPrealloc = new System.Windows.Forms.CheckBox();
             this.ChkBoxNullPrealloc.Location = new System.Drawing.Point(col2, TextBoxNopSledMin.Location.Y + TextBoxNopSledMin.Height);
-
-            this.LblNullPrealloc = new System.Windows.Forms.Label();
-            this.LblNullPrealloc.Text = "Pre-alloc null address";
-            this.LblNullPrealloc.Location = new System.Drawing.Point(ChkBoxNullPrealloc.Location.X + ChkBoxNullPrealloc.Width, ChkBoxNullPrealloc.Location.Y);
+            this.ChkBoxNullPrealloc.Text = "Pre-alloc null address";
+            this.ChkBoxNullPrealloc.Width = 200;
 
             // 
             // Generic pre-alloc
             //
             this.ChkBoxGenericPrealloc = new System.Windows.Forms.CheckBox();
             this.ChkBoxGenericPrealloc.Location = new System.Drawing.Point(col2, ChkBoxNullPrealloc.Location.Y + ChkBoxNullPrealloc.Height);
-
-            this.LblGenericPrealloc = new System.Windows.Forms.Label();
-            this.LblGenericPrealloc.Text = "Pre-alloc generic addresses";
-            this.LblGenericPrealloc.Location = new System.Drawing.Point(ChkBoxGenericPrealloc.Location.X + ChkBoxGenericPrealloc.Width, ChkBoxGenericPrealloc.Location.Y);
-
+            this.ChkBoxGenericPrealloc.Text = "Pre-alloc generic addresses";
+            this.ChkBoxGenericPrealloc.Width = 200;
 
             // 
             // TrayIcon Settings Form
@@ -221,18 +231,15 @@ namespace ohipsui
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("icon.ico")));
             this.ControlBox = false;
             this.Controls.Add(this.BtnClose);
+            this.Controls.Add(this.BtnSaveClose);
             this.Controls.Add(this.LblProcessSelection);
             this.Controls.Add(this.ListBoxProcessSelector);
             this.Controls.Add(this.LblMemMax);
             this.Controls.Add(this.TextBoxMemMax);
             this.Controls.Add(this.LblNopSledMin);
             this.Controls.Add(this.TextBoxNopSledMin);
-
-
             this.Controls.Add(this.ChkBoxNullPrealloc);
-            this.Controls.Add(this.LblNullPrealloc);
             this.Controls.Add(this.ChkBoxGenericPrealloc);
-            this.Controls.Add(this.LblGenericPrealloc);
 
             this.MinimumSize = new System.Drawing.Size(formWidth, formHeight);
             this.MaximumSize = new System.Drawing.Size(formWidth, formHeight);
@@ -247,6 +254,11 @@ namespace ohipsui
         {
             Application.Exit(); // TODO REMOVE
             // TODO UNCOMMENT HideSettingsForm();
+        }
+
+        private void SaveCloseBtn_Click(object sender, EventArgs e)
+        {
+            // TODO Save
         }
     }
 }
