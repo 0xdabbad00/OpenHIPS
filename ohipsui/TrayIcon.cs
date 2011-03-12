@@ -12,6 +12,7 @@ namespace ohipsui
         private System.ComponentModel.IContainer components = null;
         private System.Windows.Forms.NotifyIcon TrayNotifyIcon;
         private System.Windows.Forms.ContextMenuStrip TrayContextMenuStrip;
+        private Button CloseBtn;
         private System.Windows.Forms.ToolStripMenuItem SettingsToolStripMenuItem;
 
 
@@ -54,18 +55,7 @@ namespace ohipsui
             this.SettingsToolStripMenuItem.Click += new System.EventHandler(this.SettingsToolStripMenuItem_Click);
             // TODO Set image for Settings
 
-            // Create settings form
-            // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(290, 180);
-            this.ControlBox = false;
-            // TODO this.Controls.Add(this.SoundBrowseButton);
-            this.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.Margin = new System.Windows.Forms.Padding(4);
-            this.Name = "SettingsForm";
-            this.Text = "OpenHIPS Settings";
-            // TODO this.Load += new System.EventHandler(this.AlarmSettingsForm_Load);
+            InitializeComponent();
 
             // Make sure nothing shows except the tray icon initially
             this.HideSettingsForm();
@@ -88,17 +78,17 @@ namespace ohipsui
         private void HideSettingsForm()
         {
             this.WindowState = FormWindowState.Minimized;
-            Visible = false; // Hide form window.
-            ShowInTaskbar = false; // Remove from taskbar
-            //base.Hide();
+            this.ShowInTaskbar = false; // Remove from taskbar
+            base.Hide();
         }
 
         private void ShowSettingsForm()
         {
             this.WindowState = FormWindowState.Normal;
-            Visible = true;
-            ShowInTaskbar = true;
-            base.Show();
+            this.ShowInTaskbar = true;
+            this.Show();
+            this.ResumeLayout(true);
+            
         }
         
         /// <summary>
@@ -128,6 +118,41 @@ namespace ohipsui
         {
             TrayContextMenuStrip.Hide();
             ShowSettingsForm();
+        }
+
+        private void InitializeComponent()
+        {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(TrayIcon));
+            this.CloseBtn = new System.Windows.Forms.Button();
+            this.SuspendLayout();
+            // 
+            // CloseBtn
+            // 
+            this.CloseBtn.Location = new System.Drawing.Point(157, 238);
+            this.CloseBtn.Name = "Close";
+            this.CloseBtn.Size = new System.Drawing.Size(75, 23);
+            this.CloseBtn.TabIndex = 0;
+            this.CloseBtn.Text = "Close";
+            this.CloseBtn.UseVisualStyleBackColor = true;
+            this.CloseBtn.Click += new System.EventHandler(this.CloseBtn_Click);
+            // 
+            // TrayIcon Settings Form
+            // 
+            this.ClientSize = new System.Drawing.Size(292, 273);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("icon.ico")));
+            this.ControlBox = false;
+            this.Controls.Add(this.CloseBtn);
+            this.MinimumSize = new System.Drawing.Size(100, 100);
+            this.Name = "TrayIcon";
+            this.Text = "OpenHIPS Settings";
+            this.WindowState = System.Windows.Forms.FormWindowState.Minimized;
+            this.ResumeLayout(false);
+
+        }
+
+        private void CloseBtn_Click(object sender, EventArgs e)
+        {
+            HideSettingsForm();
         }
     }
 }
