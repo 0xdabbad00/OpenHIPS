@@ -37,7 +37,7 @@ catalog.add("Pages", PDFRef(pages))
 #The spraying js
 js = '''
 var slide_size=0x100000;
-var size = 300;      
+var size = 600;      
 var x = new Array(size);
 var chunk = %%minichunk%%;
 
