@@ -157,10 +157,13 @@ DWORD WINAPI HeapLocker(LPVOID lpvArgument)
 		CreateThread(NULL, 0, MonitorPrivateUsage, NULL, 0, NULL);
 	}
 
+	/*
+	// TODO Do something else for the search
 	if (sHeapLockerSettings.iSearchLen > 0)
 	{
 		CreateThread(NULL, 0, MonitorNewPagesToSearchThem, NULL, 0, NULL);
 	}
+	*/
 
 	return 0;
 }
