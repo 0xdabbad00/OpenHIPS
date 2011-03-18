@@ -9,6 +9,8 @@ namespace ohipsui
 {
     public partial class TrayIcon : Form
     {
+        private string szVersion = "0.0.0.1";
+
         private System.ComponentModel.IContainer components = null;
         private System.Windows.Forms.NotifyIcon TrayNotifyIcon;
         private System.Windows.Forms.ContextMenuStrip TrayContextMenuStrip;
@@ -30,9 +32,12 @@ namespace ohipsui
             this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(TrayIcon));
             this.TrayNotifyIcon = new System.Windows.Forms.NotifyIcon(this.components);
+            
+            // Context menu strip
             this.TrayContextMenuStrip = new System.Windows.Forms.ContextMenuStrip(this.components);
-            this.TrayContextMenuStrip.SuspendLayout();
             this.SettingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+
+            this.TrayContextMenuStrip.SuspendLayout();
             this.SuspendLayout();
 
             // 
@@ -50,7 +55,7 @@ namespace ohipsui
             // TrayContextMenuStrip
             // 
             this.TrayContextMenuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.SettingsToolStripMenuItem
+                this.SettingsToolStripMenuItem,
             });
             this.TrayContextMenuStrip.Name = "TrayContextMenuStrip";
             this.TrayContextMenuStrip.Size = new System.Drawing.Size(115, 70);
@@ -59,7 +64,6 @@ namespace ohipsui
             // SettingsToolStripMenuItem
             // 
             this.SettingsToolStripMenuItem.Name = "SettingsToolStripMenuItem";
-            this.SettingsToolStripMenuItem.Size = new System.Drawing.Size(32, 19);
             this.SettingsToolStripMenuItem.Text = "Settings...";
             this.SettingsToolStripMenuItem.Click += new System.EventHandler(this.SettingsToolStripMenuItem_Click);
             // TODO Set image for Settings
@@ -237,7 +241,7 @@ namespace ohipsui
             this.MinimumSize = new System.Drawing.Size(formWidth, formHeight);
             this.MaximumSize = new System.Drawing.Size(formWidth, formHeight);
             this.Name = "TrayIcon";
-            this.Text = "OpenHIPS Settings";
+            this.Text = "OpenHIPS v"+szVersion+" Settings";
             this.WindowState = System.Windows.Forms.FormWindowState.Minimized;
             this.ResumeLayout(false);
 
@@ -302,7 +306,5 @@ namespace ohipsui
             this.ChkBoxNullPrealloc.Checked = currentSelection.NullPrealloc;
             this.ChkBoxGenericPrealloc.Checked = currentSelection.GenericPrealloc;
         }
-
-        
     }
 }
