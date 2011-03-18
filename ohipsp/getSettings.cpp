@@ -22,6 +22,7 @@ void ReadHeapLockerSettingsFromRegistryApplication(HKEY hKeyApplication)
 	BYTE abValue[1025];
 	int iIter;
 
+	// Read "PrivateUsageMax" for the max amount of mem the app can use
 	dwValueSize = sizeof(dwValue);
 	if (IS_SUCCESS(RegQueryValueEx(hKeyApplication, REGISTRY_PRIVATE_USAGE_MAX, 0, &dwType, (LPBYTE) &dwValue, &dwValueSize)))
 	{
@@ -32,6 +33,7 @@ void ReadHeapLockerSettingsFromRegistryApplication(HKEY hKeyApplication)
 		}
 	}
 
+	// Read "NOPSledLengthMin"
 	dwValueSize = sizeof(dwValue);
 	if (IS_SUCCESS(RegQueryValueEx(hKeyApplication, REGISTRY_NOP_SLED_LENGTH_MAX, 0, &dwType, (LPBYTE) &dwValue, &dwValueSize)))
 	{
@@ -42,6 +44,7 @@ void ReadHeapLockerSettingsFromRegistryApplication(HKEY hKeyApplication)
 		}
 	}
 
+	// Read "GenericPreAllocate"
 	dwValueSize = sizeof(dwValue);
 	if (IS_SUCCESS(RegQueryValueEx(hKeyApplication, REGISTRY_GENERIC_PRE_ALLOCATE, 0, &dwType, (LPBYTE) &dwValue, &dwValueSize)))
 	{
@@ -52,6 +55,7 @@ void ReadHeapLockerSettingsFromRegistryApplication(HKEY hKeyApplication)
 		}
 	}
 
+	// Read Verbose
 	dwValueSize = sizeof(dwValue);
 	if (IS_SUCCESS(RegQueryValueEx(hKeyApplication, REGISTRY_VERBOSE, 0, &dwType, (LPBYTE) &dwValue, &dwValueSize)))
 	{
