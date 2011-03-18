@@ -93,11 +93,11 @@ namespace ohipsui
 
         private void ShowSettingsForm()
         {
+            SetFormValues();
             this.WindowState = FormWindowState.Normal;
             this.ShowInTaskbar = true;
             this.Show();
             this.ResumeLayout(true);
-            
         }
         
         /// <summary>
@@ -142,7 +142,7 @@ namespace ohipsui
             // BtnClose
             //
             this.BtnClose = new System.Windows.Forms.Button();
-            this.BtnClose.Text = "Close without saving";
+            this.BtnClose.Text = "Close";
             this.BtnClose.Width = 150;
             this.BtnClose.Location = new System.Drawing.Point(formWidth - this.BtnClose.Size.Width - margin, formHeight - this.BtnClose.Size.Height * 2 - margin);
             this.BtnClose.TabIndex = 0;
@@ -165,35 +165,26 @@ namespace ohipsui
             this.LblProcessSelection.Text = "Process name";
             this.LblProcessSelection.Location = new System.Drawing.Point(margin, margin);
             this.LblProcessSelection.TextAlign = ContentAlignment.BottomLeft;
-
             
             this.ListBoxProcessSelector = new System.Windows.Forms.ListBox();
             this.ListBoxProcessSelector.Text = "Process names";
             this.ListBoxProcessSelector.Location = new System.Drawing.Point(margin, this.LblProcessSelection.Location.Y + this.LblProcessSelection.Size.Height);
             this.ListBoxProcessSelector.ScrollAlwaysVisible = true;
             this.ListBoxProcessSelector.Height = 200;
-            ListBoxProcessSelector.BeginUpdate();
-            // Loop through and add 50 items to the ListBox.
-            for (int x = 1; x <= 5; x++)
-            {
-                ListBoxProcessSelector.Items.Add("Item " + x.ToString());
-            }
-            // Allow the ListBox to repaint and display the new items.
-            ListBoxProcessSelector.EndUpdate();
-            //ListBoxProcessSelector.SetSelected(1, true);
-
+            this.ListBoxProcessSelector.SelectedIndexChanged += new System.EventHandler(this.ProcessSelector_SelectedIndexChanged); 
+            
             //
             // Mem max
             //
             int col2 = this.ListBoxProcessSelector.Location.X + this.ListBoxProcessSelector.Width + margin;
             this.LblMemMax = new System.Windows.Forms.Label();
-            this.LblMemMax.Text = "Memory max";
+            this.LblMemMax.Text = "Memory max (MB)";
             this.LblMemMax.Location = new System.Drawing.Point(col2, margin);
             this.LblMemMax.TextAlign = ContentAlignment.BottomLeft;
 
             this.TextBoxMemMax = new System.Windows.Forms.TextBox();
-            this.TextBoxMemMax.Text = "100";
             this.TextBoxMemMax.Location = new System.Drawing.Point(col2, LblMemMax.Location.Y + LblMemMax.Height);
+            this.TextBoxMemMax.Enabled = false;
 
             // 
             // Nop sled min
@@ -205,8 +196,8 @@ namespace ohipsui
             this.LblNopSledMin.Width = 200;
 
             this.TextBoxNopSledMin = new System.Windows.Forms.TextBox();
-            this.TextBoxNopSledMin.Text = "100";
             this.TextBoxNopSledMin.Location = new System.Drawing.Point(col2, LblNopSledMin.Location.Y + LblNopSledMin.Height);
+            this.TextBoxNopSledMin.Enabled = false;
 
             // 
             // Null pre-alloc
@@ -215,6 +206,7 @@ namespace ohipsui
             this.ChkBoxNullPrealloc.Location = new System.Drawing.Point(col2, TextBoxNopSledMin.Location.Y + TextBoxNopSledMin.Height);
             this.ChkBoxNullPrealloc.Text = "Pre-alloc null address";
             this.ChkBoxNullPrealloc.Width = 200;
+            this.ChkBoxNullPrealloc.Enabled = false;
 
             // 
             // Generic pre-alloc
@@ -223,6 +215,7 @@ namespace ohipsui
             this.ChkBoxGenericPrealloc.Location = new System.Drawing.Point(col2, ChkBoxNullPrealloc.Location.Y + ChkBoxNullPrealloc.Height);
             this.ChkBoxGenericPrealloc.Text = "Pre-alloc generic addresses";
             this.ChkBoxGenericPrealloc.Width = 200;
+            this.ChkBoxGenericPrealloc.Enabled = false;
 
             // 
             // TrayIcon Settings Form
@@ -231,7 +224,7 @@ namespace ohipsui
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("icon.ico")));
             this.ControlBox = false;
             this.Controls.Add(this.BtnClose);
-            this.Controls.Add(this.BtnSaveClose);
+            //TODO this.Controls.Add(this.BtnSaveClose);
             this.Controls.Add(this.LblProcessSelection);
             this.Controls.Add(this.ListBoxProcessSelector);
             this.Controls.Add(this.LblMemMax);
@@ -252,13 +245,64 @@ namespace ohipsui
 
         private void CloseBtn_Click(object sender, EventArgs e)
         {
-            Application.Exit(); // TODO REMOVE
-            // TODO UNCOMMENT HideSettingsForm();
+            //Application.Exit();
+            HideSettingsForm();
         }
 
         private void SaveCloseBtn_Click(object sender, EventArgs e)
         {
             // TODO Save
         }
+
+        private void ProcessSelector_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            SetProcessValues();
+        }
+
+        private void SetFormValues()
+        {
+            // Find all the processes that have configurations
+            string[] procs = ProcessSettings.GetConfiguredProcesses();
+            if (procs == null)
+            {
+                return;
+            }
+
+            // Clear the current list
+            ListBoxProcessSelector.Items.Clear();
+
+            // Add the procs to the list
+            ListBoxProcessSelector.BeginUpdate();
+            // Add items to the ListBox
+            foreach (string proc in procs)
+            {
+                ListBoxProcessSelector.Items.Add(proc);
+            }
+            // Allow the ListBox to repaint and display the new items.
+            ListBoxProcessSelector.EndUpdate();
+            // Select the first process
+            ListBoxProcessSelector.SetSelected(0, true);
+
+            // Set the other values based on the process selected
+            SetProcessValues();
+        }
+
+        private void SetProcessValues()
+        {
+            String proc = ListBoxProcessSelector.SelectedItem.ToString();
+            ProcessSettings currentSelection = new ProcessSettings(proc);
+            if (currentSelection == null)
+            {
+                // TODO
+                return;
+            }
+
+            this.TextBoxMemMax.Text = currentSelection.MaxMem.ToString();
+            this.TextBoxNopSledMin.Text = currentSelection.MinNopSledLength.ToString();
+            this.ChkBoxNullPrealloc.Checked = currentSelection.NullPrealloc;
+            this.ChkBoxGenericPrealloc.Checked = currentSelection.GenericPrealloc;
+        }
+
+        
     }
 }

@@ -18,10 +18,11 @@
     <PlatformTarget>x86</PlatformTarget>
     <DebugSymbols Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">true</DebugSymbols>
     <DebugType Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">full</DebugType>
-	<DebugType Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">pdbonly</DebugType>
+    <DebugType Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>..\bin\$(Configuration)\</OutputPath>
-    <DefineConstants></DefineConstants>
+    <DefineConstants>
+    </DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
@@ -36,6 +37,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ProcessSettings.cs" />
     <Compile Include="TrayIcon.cs">
       <SubType>Form</SubType>
     </Compile>
