@@ -15,8 +15,10 @@
 	<Property Id="ARPPRODUCTICON" Value="icon.ico" />
 	<Property Id="ALLUSERS" Value="1" />
 	
+	<!-- Ensure the user installing is an admin -->
 	<Condition Message='You need to be an administrator to install this product.'>Privileged</Condition>  
 
+	<!-- Location to install to: C:\Program Files (x86)\OpenHIPS\ -->
     <Directory Id='TARGETDIR' Name='SourceDir'>
       <Directory Id='ProgramFilesFolder' Name='PFiles'>
         <Directory Id='OPENHIPSSERVICE' Name='OpenHIPS' />
@@ -25,6 +27,7 @@
 	
 	<DirectoryRef Id="OPENHIPSSERVICE">
 		<Component Id="InstallService" Guid='D6DDA62B-1DB8-4E38-B6F7-A7D074F2DC13'>
+			<!-- Files to install -->
 			<File Id="ohipssvc" Name="ohipssvc.exe" Source="..\bin\Release\ohipssvc.exe" KeyPath="yes" />
 			<File Id="ohipsui" Name="ohipsui.exe" Source="..\bin\Release\ohipsui.exe" />
 			<File Id="ohipsfs32" Name="ohipsfs32.dll" Source="..\bin\Release\ohipsfs32.dll"/>
@@ -32,8 +35,10 @@
 			<File Id="ohipsp32" Name="ohipsp32.dll" Source="..\bin\Release\ohipsp32.dll"/>
 			<File Id="ohipsp64" Name="ohipsp64.dll" Source="..\bin\Release\ohipsp64.dll"/>
 			
+			<!-- Configuration files to install -->
 			<File Id="dllLoad32" Name="dllLoad32.cfg" Source="dllLoad32.cfg"/>
 
+			<!-- Set up service for privileged monitoring -->
 			<ServiceInstall Id="OpenHIPS"
 							Name="OpenHIPS"
 							DisplayName="OpenHIPS"
@@ -49,6 +54,13 @@
 			<ServiceControl Id="StopOpenHIPS" Name="OpenHIPS"
 							Stop="both" Wait="yes" Remove="uninstall" />
 							
+			<!-- Set up run key for UI component that must run for each user -->
+			<RegistryKey Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Run" Action="create">
+				<RegistryValue Type="string" Name="OpenHIPS" Value="[OPENHIPSSERVICE]ohipsui.exe"/>
+			</RegistryKey>
+		
+			<!-- Set registry key configuration -->
+			<!-- TODO: Using the registry in wix is lame -->
 			<RegistryKey Root="HKLM" Key="Software\OpenHIPS\HeapLocker" Action="createAndRemoveOnUninstall">
 				<RegistryValue Type="integer" Name="PrivateUsageMax" Value="1000" />
 				
@@ -90,10 +102,25 @@
 		</Component>
 	</DirectoryRef>
 	
+	<!-- This just says install what I just wrote above -->
     <Feature	Id="MainApplication"
 				Title="MainApplication"
 				Level='1'>
 		<ComponentRef Id='InstallService'/>
     </Feature>
+	
+	<!-- Run our UI after install -->
+	<Property Id="WixShellExecTarget" Value="[#ohipsui]" />
+    <CustomAction Id="LaunchInstalledExe"
+         FileKey="ohipsui"
+         ExeCommand="" 
+         Execute="immediate" 
+         Impersonate="yes" 
+         Return="asyncNoWait" />
+		
+	<InstallExecuteSequence>
+        <Custom Action='LaunchInstalledExe' After='InstallFinalize'/>
+    </InstallExecuteSequence>
+
   </Product>
 </Wix>
