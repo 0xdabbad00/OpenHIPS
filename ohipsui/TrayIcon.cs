@@ -71,10 +71,10 @@ namespace ohipsui
             InitializeComponent();
 
             // Make sure nothing shows except the tray icon initially
-            this.HideSettingsForm();
             this.TrayContextMenuStrip.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
+            this.HideSettingsForm();
         }
 
         protected override void Dispose(bool disposing)
