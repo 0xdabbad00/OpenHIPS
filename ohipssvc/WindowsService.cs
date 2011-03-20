@@ -29,7 +29,7 @@ namespace ohipssvc
             // These Flags set whether or not to handle that specific
             //  type of event. Set to true if you need it, false otherwise.
             this.CanHandlePowerEvent = false;
-            this.CanHandleSessionChangeEvent = false;
+            this.CanHandleSessionChangeEvent = true;
             this.CanPauseAndContinue = true;
             this.CanShutdown = true;
             this.CanStop = true;
@@ -60,11 +60,31 @@ namespace ohipssvc
             ServiceBase.Run(new WindowsService());
         }
 
+        protected override void OnSessionChange(
+                  SessionChangeDescription changeDescription)
+        {
+            Debug.WriteLine("On session change event"); // TODO REMOVE
+            switch (changeDescription.Reason)
+            {
+                case SessionChangeReason.SessionLogon:
+                    RunUI();
+                    break;
+                default:
+                    break;
+            }
+
+
+            base.OnSessionChange(changeDescription);
+        }
+
+
         /// <summary>
         /// Runs the UI (User Interface)
         /// </summary>
         private static void RunUI()
         {
+            // TODO Need to have this run in the context of each user's desktop
+            /*
             String filepath = Assembly.GetExecutingAssembly().Location;
             // Get the name of the dll
             String uipath = Path.GetDirectoryName(filepath) + "\\" + szUiProcess;
@@ -75,6 +95,7 @@ namespace ohipssvc
                 uiProcess.StartInfo.FileName = uipath;
                 uiProcess.Start();
             }
+            */
         }
 
         /// <summary>
@@ -96,11 +117,22 @@ namespace ohipssvc
             System.Diagnostics.Debug.WriteLine("OpenHIPS Stop");
             running = false;
             OhipsMonitor.Uninstall();
-            if (uiProcess != null)
-            {
-                uiProcess.Kill();
-            }
+            KillUI();
             base.OnStop();
+        }
+
+        private void KillUI()
+        {
+            Process[] Processes = Process.GetProcesses();
+            foreach (Process p in Processes)
+            {
+                // TODO Not exactly the cleanest way of doing this
+                if (p.ProcessName.ToLower().Equals("ohipsui"))
+                {
+                    p.Kill();
+                }
+            }
+            
         }
 
         /// <summary>
