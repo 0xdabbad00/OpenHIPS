@@ -105,20 +105,10 @@ DWORD WINAPI DisplayMessageBox(LPVOID lpvArgument)
 {
 	BOOL bTerminate = FALSE;
 
-	// Check if we should force the termination or ask the user
-	if (sHeapLockerSettings.dwForceTermination)
+	// Ask the user if we should force termination
+	if (IDYES == MessageBox(NULL, (LPCSTR)lpvArgument, MESSAGEBOX_TITLE, MB_YESNO | MB_ICONEXCLAMATION))
 	{
-		// Inform the user we are forcing termination
-		MessageBox(NULL, (LPCSTR)lpvArgument, MESSAGEBOX_TITLE, MB_OK | MB_ICONSTOP);
 		bTerminate = TRUE;
-	}
-	else 
-	{
-		// Ask the user if we should force termination
-		if (IDYES == MessageBox(NULL, (LPCSTR)lpvArgument, MESSAGEBOX_TITLE, MB_YESNO | MB_ICONEXCLAMATION))
-		{
-			bTerminate = TRUE;
-		}
 	}
 
 	// Terminate the process if needed
@@ -203,7 +193,7 @@ PBYTE ShellCodeToEntryPoint(void)
 		pbAddress = (PBYTE)((rand() % 0x7E + 1) * 0x1000000 + rand() % 0x7F * 0x10000 + rand() % 0x7F * 0x100 + (rand() % 0x7F & 0xFC));
 		lpvPage = VirtualAlloc(pbAddress, sizeof(abHeapLockerShellcode), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 	}
-	if (FUNCTION_FAILED(VirtualQuery(lpvPage, &sMBI, sizeof(sMBI))))
+	if (VirtualQuery(lpvPage, &sMBI, sizeof(sMBI)) == 0)
 	{
 		PrintError(_TEXT("VirtualQuery"));
 		return NULL;
@@ -218,12 +208,12 @@ PBYTE ShellCodeToEntryPoint(void)
 	*(unsigned int *)(pbAddress + INDEX_CREATETHREAD) = (unsigned int)CreateThread;
 	*(unsigned int *)(pbAddress + INDEX_GETCURRENTTHREAD) = (unsigned int)GetCurrentThread;
 	*(unsigned int *)(pbAddress + INDEX_SUSPENDTHREAD) = (unsigned int)SuspendThread;
-	if (FUNCTION_FAILED(VirtualProtect(lpvPage, sMBI.RegionSize, PAGE_EXECUTE, &dwOldProtect)))
+	if (VirtualProtect(lpvPage, sMBI.RegionSize, PAGE_EXECUTE, &dwOldProtect) == 0)
 	{
 		PrintError(_TEXT("VirtualProtect failed"));
 		return NULL;
 	}
-	if (sHeapLockerSettings.dwVerbose > 0)
-		PrintInfo(_TEXT("Shellcode address = %08x"), pbAddress);
+	
+	PrintInfo(_TEXT("Shellcode address = %08x"), pbAddress);
 	return pbAddress;
 }

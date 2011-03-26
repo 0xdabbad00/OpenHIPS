@@ -64,16 +64,13 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <BaseAddress>0x40000</BaseAddress>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\common\debug.cpp" />
     <ClCompile Include="dllmain.cpp" />
-    <ClCompile Include="getSettings.cpp" />
     <ClCompile Include="monitorMemUsage.cpp" />
-    <ClCompile Include="detectNopSleds.cpp" />
-    <ClCompile Include="protectMemory.cpp" />
-    <ClCompile Include="searchForStrings.cpp" />
     <ClCompile Include="ui.cpp" />
   </ItemGroup>
   <ItemGroup>

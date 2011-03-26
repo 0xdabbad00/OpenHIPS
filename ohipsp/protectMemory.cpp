@@ -68,10 +68,7 @@ SIZE_T PreallocateAddress(DWORD dwAddress, int iMode)
 		lpvPage = VirtualAlloc((LPVOID)pbAddress, sizeof(abHeapLockerShellcode), MEM_COMMIT | MEM_RESERVE, ADDRESS_MODE_NOACCESS == iMode ? PAGE_NOACCESS : PAGE_EXECUTE_READWRITE);
 		if (NULL == lpvPage)
 		{
-			if (sHeapLockerSettings.dwVerbose > 0)
-			{
-				PrintError(_TEXT("VirtualAlloc failed"));
-			}
+			PrintError(_TEXT("VirtualAlloc failed"));
 			return stReturn;
 		}
 		if (FUNCTION_FAILED(VirtualQuery(lpvPage, &sMBI, sizeof(sMBI))))
@@ -79,10 +76,9 @@ SIZE_T PreallocateAddress(DWORD dwAddress, int iMode)
 			PrintError(_TEXT("VirtualQuery failed"));
 			return stReturn;
 		}
-		if (sHeapLockerSettings.dwVerbose > 0)
-		{
-			PrintInfo(_TEXT("Exploit address = %08x mode = %d page address = %08x memory size = %ld"), pbAddress, iMode, lpvPage, sMBI.RegionSize);
-		}
+		
+		PrintInfo(_TEXT("Exploit address = %08x mode = %d page address = %08x memory size = %ld"), pbAddress, iMode, lpvPage, sMBI.RegionSize);
+		
 		stReturn = sMBI.RegionSize;
 		if (ADDRESS_MODE_NOACCESS != iMode)
 		{
@@ -189,8 +185,7 @@ void PreallocatePage0(void)
 	hNTDLL = LoadLibrary(_TEXT("ntdll.dll"));
 	if (NULL == hNTDLL)
 	{
-		if (sHeapLockerSettings.dwVerbose > 0)
-			PrintError(_TEXT("LoadLibrary"));
+		PrintError(_TEXT("Unable to load ntdll.dll"));
 		return;
 	}
 	else
@@ -198,10 +193,7 @@ void PreallocatePage0(void)
 		NtAllocateVirtualMemory = (NTALLOCATEVIRTUALMEMORY) GetProcAddress(hNTDLL, _TEXT("NtAllocateVirtualMemory"));
 		if (NULL == NtAllocateVirtualMemory)
 		{
-			if (sHeapLockerSettings.dwVerbose > 0)
-			{
-				PrintError(_TEXT("GetProcAddress failed"));
-			}
+			PrintError(_TEXT("GetProcAddress failed"));
 			return;
 		}
 		else
@@ -209,17 +201,16 @@ void PreallocatePage0(void)
 			pvBaseAddress = (PVOID) 0x1;
 			stRegionSize = 0x1000;
 			dwResult = NtAllocateVirtualMemory(GetCurrentProcess(), &pvBaseAddress, 0L, &stRegionSize, MEM_COMMIT | MEM_RESERVE, PAGE_NOACCESS);
-			if (sHeapLockerSettings.dwVerbose > 0)
+
+			if (0 == dwResult)
 			{
-				if (0 == dwResult)
-				{
-					PrintInfo(_TEXT("NULL page address = %08x memory size = %ld"), pvBaseAddress, stRegionSize);
-				}
-				else
-				{
-					PrintInfo(_TEXT("NtAllocateVirtualMemory failed, return code = %ld"), dwResult);
-				}
+				PrintInfo(_TEXT("NULL page address = %08x memory size = %ld"), pvBaseAddress, stRegionSize);
 			}
+			else
+			{
+				PrintInfo(_TEXT("NtAllocateVirtualMemory failed, return code = %ld"), dwResult);
+			}
+			
 		}
 	}
 }

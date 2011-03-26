@@ -34,73 +34,20 @@
 ///////////////////////////////////////////////////////////////////////////////
 // Defines
 #define countof(array) (sizeof(array)/sizeof(array[0]))
-#define IS_SUCCESS(x) (ERROR_SUCCESS == (x))
-#define FUNCTION_FAILED(x) (!(x))
-
-#define MAX_REGISTRY_KEY_NAME		255
-#define MAX_REGISTRY_VALUE_NAME		255
-
-#define REGISTRY_PATH							_TEXT("Software\\OpenHIPS\\HeapLocker")
-#define REGISTRY_ADDRESSES						_TEXT("Addresses")
-#define REGISTRY_PATH_APPLICATIONS				_TEXT("Software\\OpenHIPS\\HeapLocker\\Applications")
-#define REGISTRY_PRIVATE_USAGE_MAX				_TEXT("PrivateUsageMax")
-#define REGISTRY_NOP_SLED_LENGTH_MAX			_TEXT("NOPSledLengthMin")
-#define REGISTRY_GENERIC_PRE_ALLOCATE			_TEXT("GenericPreAllocate")
-#define REGISTRY_VERBOSE						_TEXT("Verbose")
-#define REGISTRY_SEARCH_STRING					_TEXT("SearchString")
-#define REGISTRY_SEARCH_MODE					_TEXT("SearchMode")
-#define REGISTRY_NULL_PAGE_PRE_ALLOCATE			_TEXT("NullPagePreallocate")
-#define REGISTRY_FORCE_TERMINATION				_TEXT("ForceTermination")
-#define REGISTRY_RESUME_MONITORING				_TEXT("ResumeMonitoring")
 
 #define MESSAGEBOX_TITLE						_TEXT("OpenHIPS HeapLocker")
 
 #define MAX_PAGES 4096
 
-#define NOP 0x90
-
 #define ADDRESS_MODE_NOACCESS	0
-#define ADDRESS_MODE_SHELLCODE	1
-
-#define OUTPUTDEBUGSTRING
-
-#define ORIGIN_NONE						0
-#define ORIGIN_DEFAULT					1
-#define ORIGIN_REGISTRY_GENERIC			2
-#define ORIGIN_REGISTRY_APPLICATION		3
-
-typedef struct {
-	DWORD dwPrivateUsageMax;
-	int iOrigin_dwPrivateUsageMax;
-	DWORD dwNOPSledLengthMin;
-	int iOrigin_dwNOPSledLengthMin;
-	DWORD dwGenericPreAllocate;
-	int iOrigin_dwGenericPreAllocate;
-	DWORD dwVerbose;
-	int iOrigin_dwVerbose;
-	BYTE abSearch[1024];
-	int iSearchLen;
-	int iOrigin_iSearchLen;
-	int iSearchMode;
-	int iOrigin_iSearchMode;
-	DWORD dwPreallocatePage0;
-	int iOrigin_dwPreallocatePage0;
-	DWORD dwForceTermination;
-	int iOrigin_dwForceTermination;
-	DWORD dwResumeMonitoring;
-	int iOrigin_dwResumeMonitoring;
-} HEAPLOCKER_SETTINGS;
 
 #define INDEX_ENTRYPOINT		7
 #define INDEX_CREATETHREAD		14
 #define INDEX_GETCURRENTTHREAD	21
 #define INDEX_SUSPENDTHREAD		29
 
-#define XSIZE 1024
-
 typedef DWORD (WINAPI *NTALLOCATEVIRTUALMEMORY)(HANDLE, PVOID *, ULONG_PTR, PSIZE_T, ULONG, ULONG);
 
-extern HEAPLOCKER_SETTINGS sHeapLockerSettings;
 extern BYTE abHeapLockerShellcode[35];
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -114,23 +61,6 @@ DWORD WINAPI HeapLocker(LPVOID lpvArgument);
 // monitorMemUsage.cpp
 DWORD WINAPI MonitorPrivateUsage(LPVOID lpvArgument);
 
-// detectNopSleds.cpp
-void InitializeabNOPSledDetection(void);
-DWORD WINAPI MonitorNewPagesForNOPSleds(LPVOID lpvArgument);
-
-// searchForStrings.cpp
-DWORD WINAPI MonitorNewPagesToSearchThem(LPVOID lpvArgument);
-
-// getSettings.cpp
-void ReadHeapLockerSettingsFromRegistryApplication(HKEY hKeyApplication);
-void ReadHeapLockerSettingsFromRegistry(void);
-void SetHeapLockerSettingsDefaults(void);
-HKEY GetApplicationRegKey(void);
-
 // ui.cpp
 BOOL ThreadedMessageBox(LPTSTR pszOutput);
 PBYTE ShellCodeToEntryPoint(void);
-
-// protectMemory.cpp
-void ProtectAddresses(HKEY hKeyApplication);
-void PreallocatePage0(void);

@@ -30,8 +30,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // Globals
 
-HEAPLOCKER_SETTINGS sHeapLockerSettings;
-
 static TCHAR szModuleName[MAX_PATH];
 static TCHAR szDump[256];
 
@@ -102,69 +100,17 @@ LPTSTR HexDump(PBYTE pbFound, int iSize)
 }
 
 
-
-
-
 /******************************************************************************
  * 
  ******************************************************************************/
 DWORD WINAPI HeapLocker(LPVOID lpvArgument)
 {
-	HKEY hKeyApplication;
-
-	Sleep(100); // Sleep some time to wait for advapi32.dll to load completely (should this DLL be loaded via appinit_dll)
+	Sleep(100); // Sleep some time to wait for advapi32.dll to load completely, assuming this DLL has been loaded via appinit_dll
 
 	PrintInfo("Running HeapLocker");
 
-	hKeyApplication = GetApplicationRegKey();
-
-	if (NULL != hKeyApplication)
-	{
-		ReadHeapLockerSettingsFromRegistryApplication(hKeyApplication);
-	}
-
-	ReadHeapLockerSettingsFromRegistry();
-
-	SetHeapLockerSettingsDefaults();
-
-	PrintInfo(_TEXT("Maximum value for PrivateUsage = %ld MB (%d)"), sHeapLockerSettings.dwPrivateUsageMax, sHeapLockerSettings.iOrigin_dwPrivateUsageMax);
-	PrintInfo(_TEXT("Minimum value for NOP-sled length = %ld (%d)"), sHeapLockerSettings.dwNOPSledLengthMin, sHeapLockerSettings.iOrigin_dwNOPSledLengthMin);
-	PrintInfo(_TEXT("Pre-allocation of generic addresses = %ld (%d)"), sHeapLockerSettings.dwGenericPreAllocate, sHeapLockerSettings.iOrigin_dwGenericPreAllocate);
-	PrintInfo(_TEXT("Search mode = %d (%d) length = %d (%d)"), sHeapLockerSettings.iSearchMode, sHeapLockerSettings.iOrigin_iSearchMode, sHeapLockerSettings.iSearchLen, sHeapLockerSettings.iOrigin_iSearchLen);
-	PrintInfo(_TEXT("Pre-allocation of NULL page = %ld (%d)"), sHeapLockerSettings.dwPreallocatePage0, sHeapLockerSettings.iOrigin_dwPreallocatePage0);
-	PrintInfo(_TEXT("Verbosity = %ld (%d)"), sHeapLockerSettings.dwVerbose, sHeapLockerSettings.iOrigin_dwVerbose);
-	PrintInfo(_TEXT("Force process termination = %ld (%d)"), sHeapLockerSettings.dwForceTermination, sHeapLockerSettings.iOrigin_dwForceTermination);
-	PrintInfo(_TEXT("Resume monitoring = %ld (%d)"), sHeapLockerSettings.dwResumeMonitoring, sHeapLockerSettings.iOrigin_dwResumeMonitoring);
-
-	ProtectAddresses(hKeyApplication);
-	if (NULL != hKeyApplication)
-	{
-		RegCloseKey(hKeyApplication);
-	}
-
-	if (sHeapLockerSettings.dwPreallocatePage0 > 0)
-	{
-		PreallocatePage0();
-	}
-
-	if (sHeapLockerSettings.dwNOPSledLengthMin > 0)
-	{
-		CreateThread(NULL, 0, MonitorNewPagesForNOPSleds, NULL, 0, NULL);
-	}
-
-	if (0xFFFFFFFF != sHeapLockerSettings.dwPrivateUsageMax)
-	{
-		CreateThread(NULL, 0, MonitorPrivateUsage, NULL, 0, NULL);
-	}
-
-	/*
-	// TODO Do something else for the search
-	if (sHeapLockerSettings.iSearchLen > 0)
-	{
-		CreateThread(NULL, 0, MonitorNewPagesToSearchThem, NULL, 0, NULL);
-	}
-	*/
-
+	CreateThread(NULL, 0, MonitorPrivateUsage, NULL, 0, NULL);
+	
 	return 0;
 }
 
