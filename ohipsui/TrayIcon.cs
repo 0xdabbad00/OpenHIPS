@@ -9,22 +9,14 @@ namespace ohipsui
 {
     public partial class TrayIcon : Form
     {
-        private string szVersion = "0.0.0.1";
+        private string szVersion = "0.0.0.2";
 
         private System.ComponentModel.IContainer components = null;
         private System.Windows.Forms.NotifyIcon TrayNotifyIcon;
         private System.Windows.Forms.ContextMenuStrip TrayContextMenuStrip;
         private System.Windows.Forms.Button BtnClose;
-        private System.Windows.Forms.Button BtnSaveClose;
-        private System.Windows.Forms.Label LblProcessSelection;
-        private System.Windows.Forms.ListBox ListBoxProcessSelector;
-        private System.Windows.Forms.Label LblMemMax;
-        private System.Windows.Forms.TextBox TextBoxMemMax;
-        private System.Windows.Forms.Label LblNopSledMin;
-        private System.Windows.Forms.TextBox TextBoxNopSledMin;
-        private System.Windows.Forms.CheckBox ChkBoxNullPrealloc;
-        private System.Windows.Forms.CheckBox ChkBoxGenericPrealloc;
         private System.Windows.Forms.ToolStripMenuItem SettingsToolStripMenuItem;
+        private System.Windows.Forms.Label LblAbout;
 
 
         public TrayIcon()
@@ -152,74 +144,13 @@ namespace ohipsui
             this.BtnClose.TabIndex = 0;
             this.BtnClose.Click += new System.EventHandler(this.CloseBtn_Click);
 
-            // 
-            // BtnSaveClose
             //
-            this.BtnSaveClose = new System.Windows.Forms.Button();
-            this.BtnSaveClose.Text = "Save";
-            this.BtnSaveClose.Width = 150;
-            this.BtnSaveClose.Location = new System.Drawing.Point(this.BtnClose.Location.X, this.BtnClose.Location.Y - this.BtnSaveClose.Height);
-            this.BtnSaveClose.TabIndex = 0;
-            this.BtnSaveClose.Click += new System.EventHandler(this.SaveCloseBtn_Click);
-
+            // LblAbout
             //
-            // Process selector
-            //
-            this.LblProcessSelection = new System.Windows.Forms.Label();
-            this.LblProcessSelection.Text = "Process name";
-            this.LblProcessSelection.Location = new System.Drawing.Point(margin, margin);
-            this.LblProcessSelection.TextAlign = ContentAlignment.BottomLeft;
-            
-            this.ListBoxProcessSelector = new System.Windows.Forms.ListBox();
-            this.ListBoxProcessSelector.Text = "Process names";
-            this.ListBoxProcessSelector.Location = new System.Drawing.Point(margin, this.LblProcessSelection.Location.Y + this.LblProcessSelection.Size.Height);
-            this.ListBoxProcessSelector.ScrollAlwaysVisible = true;
-            this.ListBoxProcessSelector.Height = 200;
-            this.ListBoxProcessSelector.SelectedIndexChanged += new System.EventHandler(this.ProcessSelector_SelectedIndexChanged); 
-            
-            //
-            // Mem max
-            //
-            int col2 = this.ListBoxProcessSelector.Location.X + this.ListBoxProcessSelector.Width + margin;
-            this.LblMemMax = new System.Windows.Forms.Label();
-            this.LblMemMax.Text = "Memory max (MB)";
-            this.LblMemMax.Location = new System.Drawing.Point(col2, margin);
-            this.LblMemMax.TextAlign = ContentAlignment.BottomLeft;
-
-            this.TextBoxMemMax = new System.Windows.Forms.TextBox();
-            this.TextBoxMemMax.Location = new System.Drawing.Point(col2, LblMemMax.Location.Y + LblMemMax.Height);
-            this.TextBoxMemMax.Enabled = false;
-
-            // 
-            // Nop sled min
-            //
-            this.LblNopSledMin = new System.Windows.Forms.Label();
-            this.LblNopSledMin.Text = "Nop sled minimum length";
-            this.LblNopSledMin.Location = new System.Drawing.Point(col2, TextBoxMemMax.Location.Y + TextBoxMemMax.Height);
-            this.LblNopSledMin.TextAlign = ContentAlignment.BottomLeft;
-            this.LblNopSledMin.Width = 200;
-
-            this.TextBoxNopSledMin = new System.Windows.Forms.TextBox();
-            this.TextBoxNopSledMin.Location = new System.Drawing.Point(col2, LblNopSledMin.Location.Y + LblNopSledMin.Height);
-            this.TextBoxNopSledMin.Enabled = false;
-
-            // 
-            // Null pre-alloc
-            //
-            this.ChkBoxNullPrealloc = new System.Windows.Forms.CheckBox();
-            this.ChkBoxNullPrealloc.Location = new System.Drawing.Point(col2, TextBoxNopSledMin.Location.Y + TextBoxNopSledMin.Height);
-            this.ChkBoxNullPrealloc.Text = "Pre-alloc null address";
-            this.ChkBoxNullPrealloc.Width = 200;
-            this.ChkBoxNullPrealloc.Enabled = false;
-
-            // 
-            // Generic pre-alloc
-            //
-            this.ChkBoxGenericPrealloc = new System.Windows.Forms.CheckBox();
-            this.ChkBoxGenericPrealloc.Location = new System.Drawing.Point(col2, ChkBoxNullPrealloc.Location.Y + ChkBoxNullPrealloc.Height);
-            this.ChkBoxGenericPrealloc.Text = "Pre-alloc generic addresses";
-            this.ChkBoxGenericPrealloc.Width = 200;
-            this.ChkBoxGenericPrealloc.Enabled = false;
+            this.LblAbout = new System.Windows.Forms.Label();
+            this.LblAbout.Text = "This version does not have any settings to display.";
+            this.LblAbout.Width = formWidth;
+            this.LblAbout.Location = new System.Drawing.Point(margin, margin);
 
             // 
             // TrayIcon Settings Form
@@ -228,16 +159,8 @@ namespace ohipsui
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("icon.ico")));
             this.ControlBox = false;
             this.Controls.Add(this.BtnClose);
-            //TODO this.Controls.Add(this.BtnSaveClose);
-            this.Controls.Add(this.LblProcessSelection);
-            this.Controls.Add(this.ListBoxProcessSelector);
-            this.Controls.Add(this.LblMemMax);
-            this.Controls.Add(this.TextBoxMemMax);
-            this.Controls.Add(this.LblNopSledMin);
-            this.Controls.Add(this.TextBoxNopSledMin);
-            this.Controls.Add(this.ChkBoxNullPrealloc);
-            this.Controls.Add(this.ChkBoxGenericPrealloc);
-
+            this.Controls.Add(this.LblAbout);
+            
             this.MinimumSize = new System.Drawing.Size(formWidth, formHeight);
             this.MaximumSize = new System.Drawing.Size(formWidth, formHeight);
             this.Name = "TrayIcon";
@@ -258,53 +181,9 @@ namespace ohipsui
             // TODO Save
         }
 
-        private void ProcessSelector_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            SetProcessValues();
-        }
-
         private void SetFormValues()
         {
-            // Find all the processes that have configurations
-            string[] procs = ProcessSettings.GetConfiguredProcesses();
-            if (procs == null)
-            {
-                return;
-            }
-
-            // Clear the current list
-            ListBoxProcessSelector.Items.Clear();
-
-            // Add the procs to the list
-            ListBoxProcessSelector.BeginUpdate();
-            // Add items to the ListBox
-            foreach (string proc in procs)
-            {
-                ListBoxProcessSelector.Items.Add(proc);
-            }
-            // Allow the ListBox to repaint and display the new items.
-            ListBoxProcessSelector.EndUpdate();
-            // Select the first process
-            ListBoxProcessSelector.SetSelected(0, true);
-
-            // Set the other values based on the process selected
-            SetProcessValues();
-        }
-
-        private void SetProcessValues()
-        {
-            String proc = ListBoxProcessSelector.SelectedItem.ToString();
-            ProcessSettings currentSelection = new ProcessSettings(proc);
-            if (currentSelection == null)
-            {
-                // TODO
-                return;
-            }
-
-            this.TextBoxMemMax.Text = currentSelection.MaxMem.ToString();
-            this.TextBoxNopSledMin.Text = currentSelection.MinNopSledLength.ToString();
-            this.ChkBoxNullPrealloc.Checked = currentSelection.NullPrealloc;
-            this.ChkBoxGenericPrealloc.Checked = currentSelection.GenericPrealloc;
+            // TODO Set form
         }
     }
 }

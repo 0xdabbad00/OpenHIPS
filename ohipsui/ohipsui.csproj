@@ -37,7 +37,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ProcessSettings.cs" />
     <Compile Include="TrayIcon.cs">
       <SubType>Form</SubType>
     </Compile>
