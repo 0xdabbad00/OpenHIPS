@@ -30,10 +30,17 @@
 			<!-- Files to install -->
 			<File Id="ohipssvc" Name="ohipssvc.exe" Source="..\bin\Release\ohipssvc.exe" KeyPath="yes" />
 			<File Id="ohipsui" Name="ohipsui.exe" Source="..\bin\Release\ohipsui.exe" />
-			<File Id="ohipsfs32" Name="ohipsfs32.dll" Source="..\bin\Release\ohipsfs32.dll"/>
-			<File Id="ohipsfs64" Name="ohipsfs64.dll" Source="..\bin\Release\ohipsfs64.dll"/>
-			<File Id="ohipsp32" Name="ohipsp32.dll" Source="..\bin\Release\ohipsp32.dll"/>
-			<File Id="ohipsp64" Name="ohipsp64.dll" Source="..\bin\Release\ohipsp64.dll"/>
+			<?ifdef IsDebug ?>
+				<File Id="ohipsfs32" Name="ohipsfs32.dll" Source="..\bin\Debug\ohipsfs32.dll"/>
+				<File Id="ohipsfs64" Name="ohipsfs64.dll" Source="..\bin\Debug\ohipsfs64.dll"/>
+				<File Id="ohipsp32" Name="ohipsp32.dll" Source="..\bin\Debug\ohipsp32.dll"/>
+				<File Id="ohipsp64" Name="ohipsp64.dll" Source="..\bin\Debug\ohipsp64.dll"/>
+			<?else?>
+				<File Id="ohipsfs32" Name="ohipsfs32.dll" Source="..\bin\Release\ohipsfs32.dll"/>
+				<File Id="ohipsfs64" Name="ohipsfs64.dll" Source="..\bin\Release\ohipsfs64.dll"/>
+				<File Id="ohipsp32" Name="ohipsp32.dll" Source="..\bin\Release\ohipsp32.dll"/>
+				<File Id="ohipsp64" Name="ohipsp64.dll" Source="..\bin\Release\ohipsp64.dll"/>
+			<?endif?>
 			
 			<!-- Configuration files to install -->
 			<File Id="dllLoad32" Name="dllLoad32.cfg" Source="dllLoad32.cfg"/>
@@ -57,46 +64,6 @@
 			<!-- Set up run key for UI component that must run for each user -->
 			<RegistryKey Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Run" Action="create">
 				<RegistryValue Type="string" Name="OpenHIPS" Value="[OPENHIPSSERVICE]ohipsui.exe"/>
-			</RegistryKey>
-		
-			<!-- Set registry key configuration -->
-			<!-- TODO: Using the registry in wix is lame -->
-			<RegistryKey Root="HKLM" Key="Software\OpenHIPS\HeapLocker" Action="createAndRemoveOnUninstall">
-				<RegistryValue Type="integer" Name="PrivateUsageMax" Value="1000" />
-				
-				<RegistryKey Key="Applications" Action="createAndRemoveOnUninstall">
-					<RegistryKey Key="acrord32.exe" Action="createAndRemoveOnUninstall">
-						<RegistryValue Type="integer" Name="NOPSledLengthMin" Value="0" />
-						<RegistryValue Type="integer" Name="PrivateUsageMax" Value="500" />
-						<RegistryValue Type="integer" Name="GenericPreAllocate" Value="1" />
-						<RegistryValue Type="binary"  Name="SearchString" Value="75006e00650073006300610070006500" />
-						<RegistryValue Type="integer" Name="SearchMode" Value="1" />
-						<RegistryValue Type="integer" Name="NullPagePreallocate" Value="0" />
-						<RegistryValue Type="integer" Name="Verbose" Value="1" />
-						<RegistryKey Key="Addresses" Action="createAndRemoveOnUninstall">
-							<RegistryValue Type="integer" Name="util.printf" Value="808464432" />
-						</RegistryKey>
-					</RegistryKey>
-					<RegistryKey Key="excel.exe" Action="createAndRemoveOnUninstall">
-						<RegistryValue Type="integer" Name="NOPSledLengthMin" Value="10000" />
-						<RegistryValue Type="integer" Name="PrivateUsageMax" Value="500" />
-					</RegistryKey>
-					<RegistryKey Key="firefox.exe" Action="createAndRemoveOnUninstall">
-						<RegistryValue Type="integer" Name="NOPSledLengthMin" Value="50000" />
-						<RegistryValue Type="integer" Name="PrivateUsageMax" Value="500" />
-						<RegistryValue Type="integer" Name="GenericPreAllocate" Value="1" />
-					</RegistryKey>
-					<RegistryKey Key="foxit reader.exe" Action="createAndRemoveOnUninstall">
-						<RegistryValue Type="integer" Name="NOPSledLengthMin" Value="50000" />
-						<RegistryValue Type="integer" Name="PrivateUsageMax" Value="500" />
-						<RegistryValue Type="integer" Name="GenericPreAllocate" Value="1" />
-					</RegistryKey>
-					<RegistryKey Key="iexplore.exe" Action="createAndRemoveOnUninstall">
-						<RegistryValue Type="integer" Name="NOPSledLengthMin" Value="50000" />
-						<RegistryValue Type="integer" Name="PrivateUsageMax" Value="500" />
-						<RegistryValue Type="integer" Name="GenericPreAllocate" Value="1" />
-					</RegistryKey>
-				</RegistryKey>
 			</RegistryKey>
 
 		</Component>
