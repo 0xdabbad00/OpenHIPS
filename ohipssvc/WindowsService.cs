@@ -16,8 +16,6 @@ namespace ohipssvc
     {
         public static Boolean running = true;
         public static OhipsMonitor ohipsMonitor = null;
-        private static string szUiProcess = "ohipsui.exe";
-        private static Process uiProcess = null;
 
         public WindowsService()
         {
