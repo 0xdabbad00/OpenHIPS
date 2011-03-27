@@ -71,6 +71,7 @@
     <ClCompile Include="..\common\debug.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="monitorMemUsage.cpp" />
+    <ClCompile Include="scanMemory.cpp" />
     <ClCompile Include="ui.cpp" />
   </ItemGroup>
   <ItemGroup>

@@ -103,13 +103,13 @@ LPTSTR HexDump(PBYTE pbFound, int iSize)
 /******************************************************************************
  * 
  ******************************************************************************/
-DWORD WINAPI HeapLocker(LPVOID lpvArgument)
+DWORD WINAPI Protector(LPVOID lpvArgument)
 {
 	Sleep(100); // Sleep some time to wait for advapi32.dll to load completely, assuming this DLL has been loaded via appinit_dll
 
-	PrintInfo("Running HeapLocker");
-
+	// Create monitoring threads
 	CreateThread(NULL, 0, MonitorPrivateUsage, NULL, 0, NULL);
+	CreateThread(NULL, 0, MonitorNewPagesToSearchThem, NULL, 0, NULL);
 	
 	return 0;
 }
@@ -128,7 +128,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		PrintInfo("Running OpenHips Protector (ohipsp), compiled on: %s", __TIMESTAMP__);
 		PrintInfo("Loaded into a process %d", GetCurrentProcessId());
 
-		CreateThread(NULL, 0, HeapLocker, NULL, 0, NULL);
+		CreateThread(NULL, 0, Protector, NULL, 0, NULL);
 	}
 	else if (dwReason == DLL_PROCESS_DETACH)
 	{

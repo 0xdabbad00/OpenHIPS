@@ -56,10 +56,13 @@ extern BYTE abHeapLockerShellcode[35];
 LPTSTR NULL2EmptyString(LPTSTR pszString);
 LPTSTR GetExecutableName(void);
 LPTSTR HexDump(PBYTE pbFound, int iSize);
-DWORD WINAPI HeapLocker(LPVOID lpvArgument);
+DWORD WINAPI Protector(LPVOID lpvArgument);
 
 // monitorMemUsage.cpp
 DWORD WINAPI MonitorPrivateUsage(LPVOID lpvArgument);
+
+// scanMemory.cpp
+DWORD WINAPI MonitorNewPagesToSearchThem(LPVOID lpvArgument);
 
 // ui.cpp
 BOOL ThreadedMessageBox(LPTSTR pszOutput);
