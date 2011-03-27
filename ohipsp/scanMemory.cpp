@@ -1,8 +1,10 @@
 #include "common.h"
 #include "protector.h"
+#include <yara.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Globals
+YARA_CONTEXT* context;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Local prototypes
@@ -108,6 +110,9 @@ BOOL IdentifyNewMemoryPagesAndScan(void)
  ******************************************************************************/
 DWORD WINAPI MonitorNewPagesToSearchThem(LPVOID lpvArgument)
 {
+	yr_init();		
+	context = yr_create_context();
+
 	while(IdentifyNewMemoryPagesAndScan())
 	{
 		Sleep(1000);
