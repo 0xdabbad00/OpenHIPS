@@ -13,6 +13,34 @@ YARA_CONTEXT* context;
 ///////////////////////////////////////////////////////////////////////////////
 // Functions
 
+int count = 0;
+int limit = 0;
+
+int callback(RULE* rule, void* data)
+{	
+    int rule_match;
+	int show = TRUE;
+	
+	rule_match = (rule->flags & RULE_FLAGS_MATCH);
+
+	if (rule_match)
+	{
+		PrintInfo("Matched rule: %s ", rule->identifier);
+	}
+
+	if (rule_match)
+	{
+        count++;
+	}
+	
+	if (limit != 0 && count >= limit)
+	{
+        return CALLBACK_ABORT;
+	}
+	
+    return CALLBACK_CONTINUE;
+}
+
 /******************************************************************************
  * Identifies new memory that has been allocated, and calls the function to
  * scan them.
@@ -90,6 +118,8 @@ BOOL IdentifyNewMemoryPagesAndScan(void)
 				// containing what signatures to look for, and also don't care to look at the DLL's and .exe's
 				if (!bFirstRun)
 				{
+					// int yr_scan_mem(unsigned char* buffer, size_t buffer_size, YARA_CONTEXT* context, YARACALLBACK callback, void* user_data);
+					int errors = yr_scan_mem((unsigned char *)sMBI.BaseAddress, sMBI.RegionSize, context, callback, NULL);
 					// TODO Scan the page
 				}
 			}
@@ -110,13 +140,28 @@ BOOL IdentifyNewMemoryPagesAndScan(void)
  ******************************************************************************/
 DWORD WINAPI MonitorNewPagesToSearchThem(LPVOID lpvArgument)
 {
+	// TODO Read rules from file
+	char rules[] = "rule TestRule {strings: $ = \"unpack\" condition: 1 of them }";
+	int errors;
+
 	yr_init();		
 	context = yr_create_context();
-
-	while(IdentifyNewMemoryPagesAndScan())
+	
+	errors = yr_compile_string(rules, context);
+	if (errors)
 	{
-		Sleep(1000);
+		// TODO Check error better
+		PrintError("Problem compiling yara rule");
 	}
+	else
+	{
+		while(IdentifyNewMemoryPagesAndScan())
+		{
+			Sleep(1000);
+		}
+	}
+
+	yr_destroy_context(context);
 
 	return 0;
 }
