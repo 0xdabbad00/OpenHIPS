@@ -1,5 +1,15 @@
 Technical Notes about OpenHIPS
 ------------------------------
+--[ Development environment
+- Software required or suggested
+* Visual Studio 2010 Express for C# and C++ builds (http://www.microsoft.com/express/)
+* TortoiseSVN
+* WinMerge
+* Notepad++
+* Wix (http://wix.sourceforge.net/)
+* Cygwin (http://www.cygwin.com/)
+* Python (http://www.python.org/download/releases/3.2/)
+
 --[ Design
 Basic goal is to run inside a process we want to protect and then watch 
 for exploit attempts and block. Get inside the process via AppInit_Dll 

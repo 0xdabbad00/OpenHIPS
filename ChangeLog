@@ -1,0 +1,7 @@
+Version 0.0.0.1 (2011-03-20)
+	* First release
+
+Version 0.1.0.0 (2011-04-01)
+	* Removed most HeapLocker code, except ability to check heap size
+	* Added yara scanning
+	
