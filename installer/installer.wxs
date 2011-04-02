@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   <Product Id="*" Name="OpenHIPS"
-           Language="1033" Version="0.0.0.1" Manufacturer="0xdabbad00"
+           Language="1033"
+		   Version="0.1.0.0" 
+		   Manufacturer="0xdabbad00"
            UpgradeCode="2012DA35-95A5-4D7C-933C-8BF7B1D1714A">
     <Package 
 		InstallerVersion="200" 

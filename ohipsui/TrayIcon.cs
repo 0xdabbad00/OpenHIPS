@@ -9,7 +9,7 @@ namespace ohipsui
 {
     public partial class TrayIcon : Form
     {
-        private string szVersion = "0.0.0.2";
+        private string szVersion = "0.1.0.0";
 
         private System.ComponentModel.IContainer components = null;
         private System.Windows.Forms.NotifyIcon TrayNotifyIcon;
