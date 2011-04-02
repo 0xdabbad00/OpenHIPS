@@ -44,6 +44,7 @@
 			
 			<!-- Configuration files to install -->
 			<File Id="dllLoad32" Name="dllLoad32.cfg" Source="dllLoad32.cfg"/>
+			<File Id="rulesyar" Name="rules.yar" Source="rules.yar"/>
 
 			<!-- Set up service for privileged monitoring -->
 			<ServiceInstall Id="OpenHIPS"

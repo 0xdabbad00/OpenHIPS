@@ -5,6 +5,11 @@
 ///////////////////////////////////////////////////////////////////////////////
 // Globals
 YARA_CONTEXT* context;
+PCHAR szRuleFileName = "rules.yar";
+
+// Variables for yara callbacks
+int count = 0;
+int limit = 0;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Local prototypes
@@ -13,21 +18,22 @@ YARA_CONTEXT* context;
 ///////////////////////////////////////////////////////////////////////////////
 // Functions
 
-int count = 0;
-int limit = 0;
-
+/******************************************************************************
+ * This function is called for every yara rule when a scan is performed
+ ******************************************************************************/
 int callback(RULE* rule, void* data)
 {	
     int rule_match;
 	int show = TRUE;
 	
+	// Check if the rule was a match
 	rule_match = (rule->flags & RULE_FLAGS_MATCH);
-
 	if (rule_match)
 	{
 		PrintInfo("Matched rule: %s ", rule->identifier);
 	}
 
+	// Gather stats on the rules
 	if (rule_match)
 	{
         count++;
@@ -112,15 +118,17 @@ BOOL IdentifyNewMemoryPagesAndScan(void)
 				// Record that we've now seen this page
 				alpvPages[iPages++] = sMBI.BaseAddress;
 							
-				PrintInfo(_TEXT("Found new page 0x%p protection = 0x%04x size = 0x%04x"), sMBI.BaseAddress, sMBI.Protect, sMBI.RegionSize);
+				//PrintInfo(_TEXT("Found new page 0x%p protection = 0x%04x size = 0x%04x"), sMBI.BaseAddress, sMBI.Protect, sMBI.RegionSize);
 							
 				// If this is the first run, then do not scan it because we do not want to hit on the memory 
 				// containing what signatures to look for, and also don't care to look at the DLL's and .exe's
 				if (!bFirstRun)
 				{
-					// int yr_scan_mem(unsigned char* buffer, size_t buffer_size, YARA_CONTEXT* context, YARACALLBACK callback, void* user_data);
-					int errors = yr_scan_mem((unsigned char *)sMBI.BaseAddress, sMBI.RegionSize, context, callback, NULL);
-					// TODO Scan the page
+					int errors = yr_scan_mem((unsigned char *)sMBI.BaseAddress, sMBI.RegionSize, context, callback, NULL);	
+					if (errors)
+					{
+						PrintError("ERROR: yara scan of 0x%p (size: %d) failed with error: %d", sMBI.BaseAddress, sMBI.RegionSize, errors);
+					}
 				}
 			}
 		}
@@ -138,29 +146,76 @@ BOOL IdentifyNewMemoryPagesAndScan(void)
 /******************************************************************************
  * Thread to scan look for new memory to scan
  ******************************************************************************/
-DWORD WINAPI MonitorNewPagesToSearchThem(LPVOID lpvArgument)
+BOOL InitYara()
 {
-	// TODO Read rules from file
-	char rules[] = "rule TestRule {strings: $ = \"unpack\" condition: 1 of them }";
+	FILE* rule_file;
 	int errors;
 
-	yr_init();		
+	const DWORD dwRuleFilePath = MAX_PATH;
+	PCHAR szRuleFilePath = NULL;
+
+	// Initialize yara
+	yr_init();
 	context = yr_create_context();
-	
-	errors = yr_compile_string(rules, context);
-	if (errors)
+
+	// Get path to rule file
+	// Alloc mem
+	szRuleFilePath = (PCHAR)LocalAlloc(LMEM_ZEROINIT, dwRuleFilePath+1);
+	if (szRuleFilePath == NULL)
 	{
-		// TODO Check error better
-		PrintError("Problem compiling yara rule");
-	}
-	else
-	{
-		while(IdentifyNewMemoryPagesAndScan())
-		{
-			Sleep(1000);
-		}
+		PrintError("Could not alloc mem");
+		return FALSE;
 	}
 
+	if (0 == GetConfigFilePath("rules.yar", g_hModule, szRuleFilePath, dwRuleFilePath))
+	{
+		PrintError("Could not get config file path");
+		return FALSE;
+	}
+
+	// Open the rule file
+	errors = fopen_s(&rule_file, szRuleFilePath, "r");
+	if (errors != 0 || rule_file == NULL)
+	{
+		PrintError("Could not open rule file: %s", szRuleFilePath);
+		LocalFree(szRuleFilePath);
+		return FALSE;
+	}
+
+	// Compile the rule file
+	yr_push_file_name(context, szRuleFilePath);
+	errors = yr_compile_file(rule_file, context);
+	fclose(rule_file);
+
+	LocalFree(szRuleFilePath);
+	szRuleFilePath = NULL;
+
+	// Check for errors in compilation
+	if (errors)
+	{
+		PrintError("Error compiling yara");
+		return FALSE;
+	}
+	
+	return TRUE;
+}
+
+/******************************************************************************
+ * Thread to scan look for new memory to scan
+ ******************************************************************************/
+DWORD WINAPI MonitorNewPagesToSearchThem(LPVOID lpvArgument)
+{
+	if (!InitYara())
+	{
+		return 1;
+	}
+
+	while(IdentifyNewMemoryPagesAndScan())
+	{
+		Sleep(1000);
+	}
+	
+	// Clean-up yara
 	yr_destroy_context(context);
 
 	return 0;
