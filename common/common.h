@@ -28,4 +28,12 @@
 #define PORTABLE_32_BIT
 #endif
 
+#include <stdio.h>
+#include <tchar.h>
+
+///////////////////////////////////////////////////////////////////////////////
+// Prototypes
+// utils.cpp
+DWORD GetConfigFilePath(PCHAR szFileName, HMODULE hModule, PCHAR szPathBuffer, DWORD dwPathBuffer);
+
 #endif

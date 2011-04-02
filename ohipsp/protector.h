@@ -49,6 +49,7 @@
 typedef DWORD (WINAPI *NTALLOCATEVIRTUALMEMORY)(HANDLE, PVOID *, ULONG_PTR, PSIZE_T, ULONG, ULONG);
 
 extern BYTE abHeapLockerShellcode[35];
+extern HMODULE g_hModule;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Prototypes

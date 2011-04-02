@@ -29,8 +29,8 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 // Local prototypes
-BOOL LoadDlls(HMODULE hModule);
-BOOL LoadDllsSpecifiedInConfig(PCHAR szConfigPath, PCHAR szProcessName, PCHAR szProjectPath);
+BOOL LoadDlls();
+BOOL LoadDllsSpecifiedInConfig(PCHAR szConfigPath, PCHAR szProcessName);
 
 ///////////////////////////////////////////////////////////////////////////////
 // Globals
@@ -39,6 +39,8 @@ char szConfigFile[] = "dllLoad32.cfg";
 #else
 char szConfigFile[] = "dllLoad64.cfg";
 #endif
+
+HMODULE g_hModule = NULL;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Functions
@@ -49,10 +51,14 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 {
 	if (dwReason == DLL_PROCESS_ATTACH)
 	{
+		// Announce we're loaded
 		PrintInfo("Running OpenHips First Stage (ohipsfs), compiled on: %s", __TIMESTAMP__);
 		PrintInfo("Loaded into a process %d", GetCurrentProcessId());
 
-		LoadDlls(hModule);
+		// Set global
+		g_hModule = hModule;
+
+		LoadDlls();
 	}
 	else if (dwReason == DLL_PROCESS_DETACH)
 	{
@@ -66,11 +72,8 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 /******************************************************************************
  * Read in a config file and determine what DLL's (if any) to load into this process
  ******************************************************************************/
-BOOL LoadDlls(HMODULE hModule)
+BOOL LoadDlls()
 {
-	const DWORD dwDllPath = MAX_PATH;
-	PCHAR szDllPath = NULL;
-	
 	const DWORD dwConfigPath = MAX_PATH;
 	PCHAR szConfigPath = NULL;
 
@@ -80,41 +83,8 @@ BOOL LoadDlls(HMODULE hModule)
 
 	__try
 	{
-		__try {
-			//
-			// Get this DLL path so we can find the config file (which will be in the same directory)
-			//
-
-			// Alloc mem
-			szDllPath = (PCHAR)LocalAlloc(LMEM_ZEROINIT, dwDllPath+1);
-			if (szDllPath == NULL)
-			{
-				PrintError("Could not alloc mem");
-				return FALSE;
-			}
-
-			// Get process path
-			DWORD dwDllLength = GetModuleFileName(hModule, szDllPath, dwDllPath);
-			if (0 == dwDllLength
-				|| dwDllLength == dwDllPath
-				|| GetLastError() == ERROR_INSUFFICIENT_BUFFER)
-			{
-				PrintError("Unable to determine process path, retrieved %s", szDllPath);
-				return FALSE;
-			}
-
-			PCHAR szDllName = strrchr(szDllPath, '\\');
-			if (szDllName == NULL)
-			{
-				PrintError("Unable to determine dll name for path %s", szProcessPath);
-				return FALSE;
-			}
-
-			// Set the char after the '\\' to zero, giving us the path without the filename and with
-			// a null-terminator
-			szDllName[1] = '\0';
-			//PrintInfo("Path DLL is running from: %s", szDllPath);
-
+		__try 
+		{
 			//
 			// Get the config path
 			//
@@ -126,10 +96,10 @@ BOOL LoadDlls(HMODULE hModule)
 				PrintError("Could not alloc mem");
 				return FALSE;
 			}
-			int errno = _snprintf_s(szConfigPath, dwConfigPath, _TRUNCATE, "%s%s", szDllPath, szConfigFile);
-			if (errno == -1)
+			
+			if (0 == GetConfigFilePath(szConfigFile, g_hModule, szConfigPath, dwConfigPath))
 			{
-				PrintError("Unable to set config path");
+				PrintError("Could not get config file path");
 				return FALSE;
 			}
 			//PrintInfo("Config file: %s", szConfigPath);
@@ -169,7 +139,7 @@ BOOL LoadDlls(HMODULE hModule)
 			szProcessName++;
 
 			// Read the file and see if this is in it, if so, load the desired DLL
-			LoadDllsSpecifiedInConfig(szConfigPath, szProcessName, szDllPath);
+			LoadDllsSpecifiedInConfig(szConfigPath, szProcessName);
 		}
 		__except(1)
 		{
@@ -178,10 +148,6 @@ BOOL LoadDlls(HMODULE hModule)
 	}
 	__finally
 	{
-		if (szDllPath != NULL)
-		{
-			LocalFree(szDllPath);
-		}
 		if (szConfigPath != NULL)
 		{
 			LocalFree(szConfigPath);
@@ -200,7 +166,7 @@ BOOL LoadDlls(HMODULE hModule)
  * Read the given config file looking for lines with the given process name
  * and load the specified DLLs
  ******************************************************************************/
-BOOL LoadDllsSpecifiedInConfig(PCHAR szConfigPath, PCHAR szProcessName, PCHAR szProjectPath)
+BOOL LoadDllsSpecifiedInConfig(PCHAR szConfigPath, PCHAR szProcessName)
 {
 	// TODO SHOULD use CreateFile and ReadFile
 
@@ -250,12 +216,13 @@ BOOL LoadDllsSpecifiedInConfig(PCHAR szConfigPath, PCHAR szProcessName, PCHAR sz
 						PrintError("Could not alloc mem");
 						return FALSE;
 					}
-					int errno = _snprintf_s(szDllToLoadPath, dwDllToLoadPath, _TRUNCATE, "%s%s", szProjectPath, szDllToLoadName);
-					if (errno == -1)
+					
+					if (0 == GetConfigFilePath(szDllToLoadName, g_hModule, szDllToLoadPath, dwDllToLoadPath))
 					{
-						PrintError("Unable to set DLL path");
+						PrintError("Could not get config file path");
 						return FALSE;
 					}
+
 					PrintInfo("Loading DLL: %s", szDllToLoadPath);
 
 					// Load it!

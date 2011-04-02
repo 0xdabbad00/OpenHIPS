@@ -33,6 +33,8 @@
 static TCHAR szModuleName[MAX_PATH];
 static TCHAR szDump[256];
 
+HMODULE g_hModule = NULL;
+
 ///////////////////////////////////////////////////////////////////////////////
 // Functions
 
@@ -125,9 +127,14 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 {
 	if (dwReason == DLL_PROCESS_ATTACH)
 	{
+		// Announce we're running
 		PrintInfo("Running OpenHips Protector (ohipsp), compiled on: %s", __TIMESTAMP__);
 		PrintInfo("Loaded into a process %d", GetCurrentProcessId());
 
+		// Set global var
+		g_hModule = hModule;
+
+		// Start protector
 		CreateThread(NULL, 0, Protector, NULL, 0, NULL);
 	}
 	else if (dwReason == DLL_PROCESS_DETACH)

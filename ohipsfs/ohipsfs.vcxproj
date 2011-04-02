@@ -64,13 +64,14 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-	  <BaseAddress>0x40000</BaseAddress>
-	  <TargetMachine Condition="'$(Platform)'=='Win32'">MachineX86</TargetMachine>
-	  <TargetMachine Condition="'$(Platform)'=='x64'">MachineX64</TargetMachine>
+      <BaseAddress>0x40000</BaseAddress>
+      <TargetMachine Condition="'$(Platform)'=='Win32'">MachineX86</TargetMachine>
+      <TargetMachine Condition="'$(Platform)'=='x64'">MachineX64</TargetMachine>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\common\debug.cpp" />
+    <ClCompile Include="..\common\utils.cpp" />
     <ClCompile Include="dllmain.cpp" />
   </ItemGroup>
   <ItemGroup>
