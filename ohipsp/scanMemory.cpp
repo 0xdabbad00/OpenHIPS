@@ -124,10 +124,17 @@ BOOL IdentifyNewMemoryPagesAndScan(void)
 				// containing what signatures to look for, and also don't care to look at the DLL's and .exe's
 				if (!bFirstRun)
 				{
-					int errors = yr_scan_mem((unsigned char *)sMBI.BaseAddress, sMBI.RegionSize, context, callback, NULL);	
-					if (errors)
+					__try
 					{
-						PrintError("ERROR: yara scan of 0x%p (size: %d) failed with error: %d", sMBI.BaseAddress, sMBI.RegionSize, errors);
+						int errors = yr_scan_mem((unsigned char *)sMBI.BaseAddress, sMBI.RegionSize, context, callback, NULL);	
+						if (errors)
+						{
+							PrintError("ERROR: yara scan of 0x%p (size: %d) failed with error: %d", sMBI.BaseAddress, sMBI.RegionSize, errors);
+						}
+					}
+					__except(1)
+					{
+						PrintError("Exception in yara scan");
 					}
 				}
 			}
@@ -135,7 +142,7 @@ BOOL IdentifyNewMemoryPagesAndScan(void)
 	}
 	__except(1)
 	{
-		PrintError("Exception");
+		PrintError("Exception in memory scanning");
 	}
 
 	CloseHandle(hProcess);
