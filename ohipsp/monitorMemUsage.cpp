@@ -3,7 +3,7 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 // Globals
-DWORD dwPrivateUsageMax = 500*1024*1024; // 500MB
+DWORD dwPrivateUsageMax = 400*1024*1024; // 500MB
 
 ///////////////////////////////////////////////////////////////////////////////
 // Local prototypes
@@ -21,11 +21,12 @@ BOOL CheckPrivateUsage(void)
 	TCHAR szOutput[256];
 
 	GetProcessMemoryInfo(GetCurrentProcess(), (PPROCESS_MEMORY_COUNTERS)&sPMCE, sizeof(sPMCE));
-	//PrintInfo(_TEXT("PrivateUsage %ld MB"), sPMCE.PrivateUsage / 1024 / 1024);
+	//PrintInfo(_TEXT("PrivateUsage %ld, max: %ld"), sPMCE.PrivateUsage, dwPrivateUsageMax);
 	
 	//	PrintInfo(_TEXT("Sum %ld MB"), (sPMCE.PrivateUsage + sPMCE.WorkingSetSize + sPMCE.QuotaPagedPoolUsage + sPMCE.QuotaNonPagedPoolUsage + sPMCE.PagefileUsage) / 1024 / 1024);
-	if (sPMCE.PrivateUsage / 1024 / 1024 >= dwPrivateUsageMax)
+	if (sPMCE.PrivateUsage >= dwPrivateUsageMax)
 	{
+		PrintInfo(_TEXT("PrivateUsage is greater than max allowed (%ld MB)"), dwPrivateUsageMax);
 		// Application is using more than the configured max, display message box
 		_sntprintf_s(szOutput, countof(szOutput), _TRUNCATE, _TEXT("This document is probably malicious!\nDo you want to terminate this program (%s)?\n\nTechnical details: heap-spray detected\nPrivateUsage %ld MB"), NULL2EmptyString(GetExecutableName()), sPMCE.PrivateUsage / 1024 / 1024);
 		
