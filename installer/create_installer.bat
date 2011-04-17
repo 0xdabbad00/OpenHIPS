@@ -1,8 +1,11 @@
+SET WIXDIR="C:\Program Files (x86)\Windows Installer XML v3.5\bin"
+SET OPTIONS=-ext WixUtilExtension -ext WiXNetFxExtension
+
 del *.msi installer.wix*
-"C:\Program Files (x86)\Windows Installer XML v3.5\bin\candle.exe" -ext WixUtilExtension installer.wxs 
-"C:\Program Files (x86)\Windows Installer XML v3.5\bin\light.exe" -ext WixUtilExtension installer.wixobj
+%WIXDIR%\candle.exe %OPTIONS% installer.wxs 
+%WIXDIR%\light.exe %OPTIONS% installer.wixobj
 move installer.msi openhips-setup.msi
 del installer.wix*
-"C:\Program Files (x86)\Windows Installer XML v3.5\bin\candle.exe" -dIsDebug="true" -ext WixUtilExtension installer.wxs 
-"C:\Program Files (x86)\Windows Installer XML v3.5\bin\light.exe" -ext WixUtilExtension installer.wixobj
+%WIXDIR%\candle.exe -dIsDebug="true" %OPTIONS% installer.wxs 
+%WIXDIR%\light.exe %OPTIONS% installer.wixobj
 move installer.msi openhips-setup_debug.msi

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+	xmlns:netfx="http://schemas.microsoft.com/wix/NetFxExtension">
   <Product Id="*" Name="OpenHIPS"
            Language="1033"
 		   Version="0.1.0.0" 
@@ -19,6 +20,15 @@
 	
 	<!-- Ensure the user installing is an admin -->
 	<Condition Message='You need to be an administrator to install this product.'>Privileged</Condition>  
+	
+	<PropertyRef Id="NETFRAMEWORK40CLIENT"/>
+
+	
+	<!-- Ensure the system has .NET 4.0 installed -->
+	<Condition Message="This application requires .NET Framework 4.0. Please install the .NET Framework then run this installer again.">
+    <![CDATA[Installed OR NETFRAMEWORK40CLIENT]]>
+	</Condition>
+
 
 	<!-- Location to install to: C:\Program Files (x86)\OpenHIPS\ -->
     <Directory Id='TARGETDIR' Name='SourceDir'>
