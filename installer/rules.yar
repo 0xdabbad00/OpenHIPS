@@ -2,7 +2,6 @@
 YARA 1.5 rules OpenHIPS
 Author: 0xdabbad00
 Based on Metasploit shell code's
-
 */
 
 rule shellcodeBindTcp
@@ -45,4 +44,16 @@ rule shellcodeReverseTcp
 		$string = {FC E8 89 00 00 00 60 89 E5 31 D2 64 8B 52 30 8B  52 0C 8B 52 14 8B 72 28 0F B7 4A 26 31 FF 31 C0  AC 3C 61 7C 02 2C 20 C1 CF 0D 01 C7 E2 F0 52 57  8B 52 10 8B 42 3C 01 D0 8B 40 78 85 C0 74 4A 01  D0 50 8B 48 18 8B 58 20 01 D3 E3 3C 49 8B 34 8B  01 D6 31 FF 31 C0 AC C1 CF 0D 01 C7 38 E0 75 F4  03 7D F8 3B 7D 24 75 E2 58 8B 58 24 01 D3 66 8B  0C 4B 8B 58 1C 01 D3 8B 04 8B 01 D0 89 44 24 24  5B 5B 61 59 5A 51 FF E0 58 5F 5A 8B 12 EB 86 5D  68 33 32 00 00 68 77 73 32 5F 54 68 4C 77 26 07  FF D5 B8 90 01 00 00 29 C4 54 50 68 29 80 6B 00  FF D5 50 50 50 50 40 50 40 50 68 EA 0F DF E0 FF  D5 89 C7 68 ?? ?? ?? ?? 68 02 00 ?? ?? 89 E6 6A  10 56 57 68 99 A5 74 61 FF D5 68 63 6D 64 00 89  E3 57 57 57 31 F6 6A 12 59 56 E2 FD 66 C7 44 24  3C 01 01 8D 44 24 10 C6 00 44 54 50 56 56 56 46  56 4E 56 56 53 56 68 79 CC 3F 86 FF D5 89 E0 4E  56 46 FF 30 68 08 87 1D 60 FF D5 BB ?? ?? ?? ??  68 A6 95 BD 9D FF D5 3C 06 7C 0A 80 FB E0 75 05  BB 47 13 72 6F 6A 00 53 FF D5}
 	condition: $string
 }
+
+
+rule shellcodeFindKernel32
+{
+	meta:
+		sourceOrg = "metasploit"
+		sourcePath = "msf3\\modules\\payloads\\singles\\windows\\messagebox.rb"
+	strings:
+		$string = {31 d2 b2 77 31 c9 64 8b 71 30 8b 76 0c 8b 76 1c 8b 46 08 8b 7e 20 8b 36 38 4f 18 75 f3 59 01 d1 ff e1 60 8b 6c 24 24 8b 45 3c 8b 54 28 78 01 ea 8b 4a 18 8b 5a 20 01 eb e3 34 49 8b 34 8b 01 ee 31 ff 31 c0 fc ac 84 c0 74 07 c1 cf 0d 01 c7 eb f4 3b 7c 24 28 75 e1 8b 5a 24 01 eb 66 8b 0c 4b 8b 5a 1c 01 eb 8b 04 8b 01 e8 89 44 24 1c 61 c3}
+	condition: $string
+}
+
 
